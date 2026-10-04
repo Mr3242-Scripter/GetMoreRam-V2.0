@@ -55,4 +55,18 @@ class AppIDViewModel : ObservableObject {
             }
         }
     }
+    
+    func addIncreasedMemoryLimitToAll() async throws {
+        guard let team = DataManager.shared.model.team, let session = DataManager.shared.model.session else {
+            throw "Please Login First"
+        }
+        
+        for appIDModel in appIDs {
+            do {
+                try await appIDModel.addIncreasedMemory()
+            } catch {
+                appIDModel.result = "Error: \(error.detailedDescription)"
+            }
+        }
+    }
 }
