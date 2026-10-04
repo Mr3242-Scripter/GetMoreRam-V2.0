@@ -62,7 +62,7 @@ extension String: @retroactive LocalizedError {
 //        let bundle = Bundle(path: path!)
 //        return bundle
 //    }()
-    
+     
     var loc: String {
 //        let message = NSLocalizedString(self, comment: "")
 //        if message != self {
@@ -72,19 +72,20 @@ extension String: @retroactive LocalizedError {
 //        if let forcedString = String.enBundle?.localizedString(forKey: self, value: nil, table: nil){
 //            return forcedString
 //        }else {
-            return self
+             return self
 //        }
-    }
-    
+     }
+     
     func localizeWithFormat(_ arguments: CVarArg...) -> String{
         String.localizedStringWithFormat(self.loc, arguments)
     }
-    
+     
 }
 
 class SharedModel: ObservableObject {
     @Published var isLogin = false
     @AppStorage("AnisetteServer") var anisetteServerURL = "https://ani.sidestore.io"
+    @AppStorage("AutoFireOnStartup") var autoFireOnStartup = false
     var session: AppleAPISession?
     var account: Account?
     var team: Team?
@@ -103,32 +104,32 @@ extension Error {
     var detailedDescription: String {
         let localizedError = self as? LocalizedError
         var lines: [String] = []
-        
+         
         if let description = localizedError?.errorDescription, !description.isEmpty {
             lines.append(description)
         } else {
             let nsError = self as NSError
             lines.append(nsError.localizedDescription)
         }
-        
+         
         if let failureReason = localizedError?.failureReason, !failureReason.isEmpty {
             lines.append("Reason: \(failureReason)")
         }
-        
+         
         if let recoverySuggestion = localizedError?.recoverySuggestion, !recoverySuggestion.isEmpty {
             lines.append("Suggestion: \(recoverySuggestion)")
         }
-        
+         
         let nsError = self as NSError
         if nsError.domain != NSCocoaErrorDomain || nsError.code != 0 {
             lines.append("Domain: \(nsError.domain)")
             lines.append("Code: \(nsError.code)")
         }
-        
+         
         if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? Error {
             lines.append("Underlying: \(underlying.detailedDescription)")
         }
-        
+         
         return lines.joined(separator: "\n")
     }
 }
