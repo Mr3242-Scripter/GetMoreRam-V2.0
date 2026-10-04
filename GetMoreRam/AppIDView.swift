@@ -76,6 +76,10 @@ struct AppIDView : View {
                     Button("Refresh") {
                         Task { await refreshButtonClicked() }
                     }
+                    
+                    Button("Fire All") {
+                        Task { await fireAllButtonClicked() }
+                    }
                 }
             }
             .alert("Error", isPresented: $errorShow){
@@ -91,6 +95,15 @@ struct AppIDView : View {
     func refreshButtonClicked() async {
         do {
             try await viewModel.fetchAppIDs()
+        } catch {
+            errorInfo = error.detailedDescription
+            errorShow = true
+        }
+    }
+    
+    func fireAllButtonClicked() async {
+        do {
+            try await viewModel.addIncreasedMemoryLimitToAll()
         } catch {
             errorInfo = error.detailedDescription
             errorShow = true
