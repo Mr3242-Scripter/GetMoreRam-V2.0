@@ -60,6 +60,8 @@ struct SettingsView: View {
                     TextField("", text: $sharedModel.anisetteServerURL)
                         .multilineTextAlignment(.trailing)
                 }
+                
+                Toggle("Auto Fire on Startup", isOn: $sharedModel.autoFireOnStartup)
             }
             
             Section {
@@ -67,7 +69,7 @@ struct SettingsView: View {
                     cleanUp()
                 }
             } footer: {
-                Text("If something went wrong during signing in, please try to clean up the keychain, repoen the app and try again. \n \nIf you use SideStore and are already signed in, please also try exporting SideStore Account from SideStore settings and import it here to sign in.")
+                Text("If something went wrong during signing in, please try to clean up the keychain, repoen the app and try again. \n \nIf you use SideStore and are already signed in, please also clean up keychain in SideStore as well.")
             }
         }
         .alert("Error", isPresented: $errorShow){
@@ -97,6 +99,17 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $viewModel.teamSelectionShow) {
             teamSelectionView
+        }
+        .onAppear {
+            if sharedModel.isLogin {
+                email = sharedModel.account?.appleID ?? email
+                teamId = sharedModel.team?.identifier ?? teamId
+            } else {
+                // Load from Keychain if available
+                if let savedEmail = Keychain.shared.appleIDEmailAddress {
+                    email = savedEmail
+                }
+            }
         }
     }
     
