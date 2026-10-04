@@ -21,6 +21,10 @@ struct SettingsView: View {
     @State private var importResultShow = false
     @State private var importResultInfo = ""
     @State private var isImportingSideStoreAccount = false
+    @State private var showAppNameEditor = false
+    @State private var showAppIconEditor = false
+    @State private var newAppName = ""
+    @State private var newAppIconURL = ""
 
     var body: some View {
         Form {
@@ -64,6 +68,36 @@ struct SettingsView: View {
             }
             
             Section {
+                HStack {
+                    Text("App Name")
+                    Spacer()
+                    Text(sharedModel.appDisplayName)
+                        .font(.system(.body, design: .monospaced))
+                }
+                
+                Button("Edit App Name") {
+                    newAppName = sharedModel.customAppName
+                    showAppNameEditor = true
+                }
+                
+                HStack {
+                    Text("App Icon URL")
+                    Spacer()
+                    if !sharedModel.customAppIconURL.isEmpty {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                    }
+                }
+                
+                Button("Set App Icon from URL") {
+                    newAppIconURL = sharedModel.customAppIconURL
+                    showAppIconEditor = true
+                }
+            } header: {
+                Text("Customization")
+            }
+            
+            Section {
                 Button("Clean Up Keychain") {
                     cleanUp()
                 }
@@ -88,6 +122,12 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $viewModel.teamSelectionShow) {
             teamSelectionView
+        }
+        .sheet(isPresented: $showAppNameEditor) {
+            appNameEditorSheet
+        }
+        .sheet(isPresented: $showAppIconEditor) {
+            appIconEditorSheet
         }
         .onAppear {
             if sharedModel.isLogin {
@@ -184,6 +224,101 @@ struct SettingsView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel", role: .cancel) {
                         cancelTeamSelection()
+                    }
+                }
+            }
+        }
+    }
+    
+    var appNameEditorSheet: some View {
+        NavigationView {
+            Form {
+                Section {
+                    TextField("App Name", text: $newAppName)
+                } header: {
+                    Text("Enter new app name")
+                }
+                
+                Section {
+                    Button("Save") {
+                        if !newAppName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            sharedModel.updateAppName(newAppName.trimmingCharacters(in: .whitespacesAndNewlines))
+                            showAppNameEditor = false
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Edit App Name")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel", role: .cancel) {
+                        showAppNameEditor = false
+                    }
+                }
+            }
+        }
+    }
+    
+    var appIconEditorSheet: some View {
+        NavigationView {
+            Form {
+                Section {
+                    TextField("Icon URL", text: $newAppIconURL)
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
+                } header: {
+                    Text("Enter icon image URL")
+                } footer: {
+                    Text("Paste a direct URL to a 1024x1024 PNG or JPEG image")
+                }
+                
+                if !newAppIconURL.isEmpty {
+                    Section {
+                        AsyncImage(url: URL(string: newAppIconURL)) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(height: 150)
+                            case .loading:
+                                ProgressView()
+                            case .empty, .failure:
+                                HStack {
+                                    Spacer()
+                                    VStack {
+                                        Image(systemName: "exclamationmark.triangle")
+                                            .foregroundColor(.orange)
+                                        Text("Failed to load preview")
+                                            .font(.caption)
+                                    }
+                                    Spacer()
+                                }
+                                .frame(height: 150)
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+                    } header: {
+                        Text("Preview")
+                    }
+                }
+                
+                Section {
+                    Button("Apply Icon") {
+                        sharedModel.updateAppIcon(from: newAppIconURL)
+                        showAppIconEditor = false
+                    }
+                    .disabled(newAppIconURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .navigationTitle("Set App Icon")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel", role: .cancel) {
+                        showAppIconEditor = false
                     }
                 }
             }
