@@ -321,10 +321,10 @@ struct SettingsView: View {
                     PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
                         Label("Choose from Photos", systemImage: "photo")
                     }
-                    Button { showCamera = true } label {
+                    Button { showCamera = true } label: {
                         Label("Take a Photo", systemImage: "camera")
                     }
-                    Button { showAppIconFileImporter = true } label {
+                    Button { showAppIconFileImporter = true } label: {
                         Label("Choose from Files", systemImage: "folder")
                     }
                 }
