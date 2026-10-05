@@ -48,7 +48,7 @@ struct SettingsView: View {
                         viewModel.loginModalShow = true
                     }
 
-                    Button("Import from SideStore") {
+                    Button("Import SideStore account (.sideconf)") {
                         importFromSideStore()
                     }
                 }
@@ -143,7 +143,7 @@ struct SettingsView: View {
         .sheet(isPresented: $showAppIconEditor) {
             appIconEditorSheet
         }
-        .fileImporter(isPresented: $showSideStoreImporter, allowedContentTypes: [.json], allowsMultipleSelection: false) { result in
+        .fileImporter(isPresented: $showSideStoreImporter, allowedContentTypes: [UTType(filenameExtension: "sideconf") ?? .json, .json], allowsMultipleSelection: false) { result in
             handleSideStoreImport(result)
         }
         .onAppear {
