@@ -4,6 +4,7 @@
 //
 //  Created by s s on 2025/3/14.
 //
+
 import SwiftUI
 import UniformTypeIdentifiers
 import StosSign_API
@@ -35,6 +36,7 @@ struct SettingsView: View {
                         Spacer()
                         Text(email)
                     }
+
                     HStack {
                         Text("Team ID")
                         Spacer()
@@ -57,38 +59,44 @@ struct SettingsView: View {
                 HStack {
                     Text("Anisette Server URL")
                     Spacer()
+
                     TextField("", text: $sharedModel.anisetteServerURL)
                         .multilineTextAlignment(.trailing)
-                        .onChange(of: sharedModel.anisetteServerURL) { _, newValue in
+                        .onChange(of: sharedModel.anisetteServerURL) { _ in
                             sharedModel.updateAnisetteURL()
                         }
                 }
 
-                Toggle("Auto Fire on Startup", isOn: $sharedModel.autoFireOnStartup)
+                Toggle(
+                    "Auto Fire on Startup",
+                    isOn: $sharedModel.autoFireOnStartup
+                )
             }
-            
+
             Section {
                 HStack {
                     Text("App Name")
                     Spacer()
+
                     Text(sharedModel.appDisplayName)
                         .font(.system(.body, design: .monospaced))
                 }
-                
+
                 Button("Edit App Name") {
                     newAppName = sharedModel.customAppName
                     showAppNameEditor = true
                 }
-                
+
                 HStack {
                     Text("App Icon URL")
                     Spacer()
+
                     if !sharedModel.customAppIconURL.isEmpty {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
                     }
                 }
-                
+
                 Button("Set App Icon from URL") {
                     newAppIconURL = sharedModel.customAppIconURL
                     showAppIconEditor = true
@@ -96,13 +104,15 @@ struct SettingsView: View {
             } header: {
                 Text("Customization")
             }
-            
+
             Section {
                 Button("Clean Up Keychain") {
                     cleanUp()
                 }
             } footer: {
-                Text("If something went wrong during signing in, please try to clean up the keychain, reopen the app and try again.\n\nIf you use SideStore and are already signed in, please also clean up keychain in SideStore as well.")
+                Text(
+                    "If something went wrong during signing in, please try to clean up the keychain, reopen the app and try again.\n\nIf you use SideStore and are already signed in, please also clean up keychain in SideStore as well."
+                )
             }
         }
         .alert("Error", isPresented: $errorShow) {
@@ -115,9 +125,12 @@ struct SettingsView: View {
         } message: {
             Text(importResultInfo)
         }
-        .sheet(isPresented: $viewModel.loginModalShow, onDismiss: {
-            viewModel.cancelAuthentication()
-        }) {
+        .sheet(
+            isPresented: $viewModel.loginModalShow,
+            onDismiss: {
+                viewModel.cancelAuthentication()
+            }
+        ) {
             loginModal
         }
         .sheet(isPresented: $viewModel.teamSelectionShow) {
@@ -153,23 +166,31 @@ struct SettingsView: View {
                 } header: {
                     Text("Apple ID")
                 }
+
                 Section {
                     SecureField("", text: $viewModel.password)
                         .disabled(viewModel.isLoginInProgress)
                 } header: {
                     Text("Password")
                 }
+
                 if viewModel.needVerificationCode {
                     Section {
-                        TextField("", text: $viewModel.verificationCode)
-                            .disabled(viewModel.isVerificationCodeSubmitting)
+                        TextField(
+                            "",
+                            text: $viewModel.verificationCode
+                        )
+                        .disabled(viewModel.isVerificationCodeSubmitting)
                     } header: {
                         Text("Verification Code")
                     }
                 }
+
                 Section {
                     Button("Continue") {
-                        Task { await loginButtonClicked() }
+                        Task {
+                            await loginButtonClicked()
+                        }
                     }
                     .disabled(continueButtonDisabled)
                 }
@@ -204,16 +225,25 @@ struct SettingsView: View {
     var teamSelectionView: some View {
         NavigationView {
             List {
-                ForEach(Array(viewModel.availableTeams.enumerated()), id: \.offset) { _, team in
+                ForEach(
+                    Array(viewModel.availableTeams.enumerated()),
+                    id: \.offset
+                ) { _, team in
                     Button {
                         selectTeam(team)
                     } label: {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(
+                            alignment: .leading,
+                            spacing: 4
+                        ) {
                             Text(team.name)
                                 .foregroundStyle(.primary)
-                            Text("\(team.identifier) · \(teamTypeDescription(team.type))")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
+
+                            Text(
+                                "\(team.identifier) · \(teamTypeDescription(team.type))"
+                            )
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -229,7 +259,7 @@ struct SettingsView: View {
             }
         }
     }
-    
+
     var appNameEditorSheet: some View {
         NavigationView {
             Form {
@@ -238,11 +268,19 @@ struct SettingsView: View {
                 } header: {
                     Text("Enter new app name")
                 }
-                
+
                 Section {
                     Button("Save") {
-                        if !newAppName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            sharedModel.updateAppName(newAppName.trimmingCharacters(in: .whitespacesAndNewlines))
+                        if !newAppName
+                            .trimmingCharacters(in: .whitespacesAndNewlines)
+                            .isEmpty
+                        {
+                            sharedModel.updateAppName(
+                                newAppName.trimmingCharacters(
+                                    in: .whitespacesAndNewlines
+                                )
+                            )
+
                             showAppNameEditor = false
                         }
                     }
@@ -259,43 +297,60 @@ struct SettingsView: View {
             }
         }
     }
-    
+
     var appIconEditorSheet: some View {
         NavigationView {
             Form {
                 Section {
-                    TextField("Icon URL", text: $newAppIconURL)
-                        .autocapitalization(.none)
-                        .disableAutocorrection(true)
+                    TextField(
+                        "Icon URL",
+                        text: $newAppIconURL
+                    )
+                    .autocapitalization(.none)
+                    .disableAutocorrection(true)
                 } header: {
                     Text("Enter icon image URL")
                 } footer: {
-                    Text("Paste a direct URL to a 1024x1024 PNG or JPEG image")
+                    Text(
+                        "Paste a direct URL to a 1024x1024 PNG or JPEG image"
+                    )
                 }
-                
+
                 if !newAppIconURL.isEmpty {
                     Section {
-                        AsyncImage(url: URL(string: newAppIconURL)) { phase in
+                        AsyncImage(
+                            url: URL(string: newAppIconURL)
+                        ) { phase in
                             switch phase {
                             case .success(let image):
                                 image
                                     .resizable()
                                     .scaledToFit()
                                     .frame(height: 150)
-                            case .loading:
+
+                            case .empty:
                                 ProgressView()
-                            case .empty, .failure:
+                                    .frame(height: 150)
+
+                            case .failure:
                                 HStack {
                                     Spacer()
+
                                     VStack {
-                                        Image(systemName: "exclamationmark.triangle")
-                                            .foregroundColor(.orange)
+                                        Image(
+                                            systemName:
+                                                "exclamationmark.triangle"
+                                        )
+                                        .foregroundColor(.orange)
+
                                         Text("Failed to load preview")
                                             .font(.caption)
                                     }
+
                                     Spacer()
                                 }
                                 .frame(height: 150)
+
                             @unknown default:
                                 EmptyView()
                             }
@@ -304,13 +359,22 @@ struct SettingsView: View {
                         Text("Preview")
                     }
                 }
-                
+
                 Section {
                     Button("Apply Icon") {
-                        sharedModel.updateAppIcon(from: newAppIconURL)
+                        sharedModel.updateAppIcon(
+                            from: newAppIconURL
+                        )
+
                         showAppIconEditor = false
                     }
-                    .disabled(newAppIconURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(
+                        newAppIconURL
+                            .trimmingCharacters(
+                                in: .whitespacesAndNewlines
+                            )
+                            .isEmpty
+                    )
                 }
             }
             .navigationTitle("Set App Icon")
@@ -333,6 +397,7 @@ struct SettingsView: View {
             }
 
             let result = try await viewModel.authenticate()
+
             if result {
                 await MainActor.run {
                     viewModel.loginModalShow = false
@@ -346,7 +411,10 @@ struct SettingsView: View {
                         selectTeam(team)
                     }
                 } else {
-                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    try? await Task.sleep(
+                        nanoseconds: 300_000_000
+                    )
+
                     await MainActor.run {
                         viewModel.teamSelectionShow = true
                     }
@@ -363,7 +431,11 @@ struct SettingsView: View {
     private var continueButtonDisabled: Bool {
         if viewModel.needVerificationCode {
             return viewModel.isVerificationCodeSubmitting ||
-                viewModel.verificationCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                viewModel.verificationCode
+                    .trimmingCharacters(
+                        in: .whitespacesAndNewlines
+                    )
+                    .isEmpty
         }
 
         return viewModel.isLoginInProgress
@@ -374,47 +446,63 @@ struct SettingsView: View {
         Keychain.shared.identifier = nil
         Keychain.shared.appleIDPassword = nil
         Keychain.shared.appleIDEmailAddress = nil
+
         AnisetteDataHelper.shared.resetClientInfo()
+
         sharedModel.session = nil
         sharedModel.account = nil
         sharedModel.team = nil
         sharedModel.isLogin = false
+
         viewModel.availableTeams = []
         viewModel.teamSelectionShow = false
+
         email = ""
         teamId = ""
     }
 
     func importFromSideStore() {
-        let sideStoreURL = URL(string: "sidestore://import-account")!
+        let sideStoreURL = URL(
+            string: "sidestore://import-account"
+        )!
+
         if UIApplication.shared.canOpenURL(sideStoreURL) {
             UIApplication.shared.open(sideStoreURL) { success in
                 if success {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    DispatchQueue.main.asyncAfter(
+                        deadline: .now() + 0.5
+                    ) {
                         handleSideStoreReturn()
                     }
                 }
             }
         } else {
-            errorInfo = "SideStore is not installed. Please install SideStore first."
+            errorInfo =
+                "SideStore is not installed. Please install SideStore first."
             errorShow = true
         }
     }
 
     func handleSideStoreReturn() {
         if let email = Keychain.shared.appleIDEmailAddress,
-           let password = Keychain.shared.appleIDPassword {
-            importResultInfo = "Successfully imported account from SideStore: \(email)"
+           Keychain.shared.appleIDPassword != nil {
+
+            importResultInfo =
+                "Successfully imported account from SideStore: \(email)"
+
             importResultShow = true
             self.email = email
+
             sharedModel.session = nil
             sharedModel.account = nil
             sharedModel.team = nil
             sharedModel.isLogin = false
+
             viewModel.availableTeams = []
             viewModel.teamSelectionShow = false
         } else {
-            errorInfo = "Failed to import account from SideStore."
+            errorInfo =
+                "Failed to import account from SideStore."
             errorShow = true
         }
     }
@@ -422,8 +510,10 @@ struct SettingsView: View {
     func selectTeam(_ team: Team) {
         sharedModel.team = team
         sharedModel.isLogin = true
+
         email = sharedModel.account?.appleID ?? email
         teamId = team.identifier
+
         viewModel.availableTeams = []
         viewModel.teamSelectionShow = false
     }
@@ -431,10 +521,12 @@ struct SettingsView: View {
     func cancelTeamSelection() {
         viewModel.availableTeams = []
         viewModel.teamSelectionShow = false
+
         sharedModel.session = nil
         sharedModel.account = nil
         sharedModel.team = nil
         sharedModel.isLogin = false
+
         email = ""
         teamId = ""
     }
@@ -443,10 +535,13 @@ struct SettingsView: View {
         switch type {
         case .free:
             return "Free"
+
         case .individual:
             return "Individual"
+
         case .organization:
             return "Organization"
+
         case .unknown:
             return "Unknown"
         }
