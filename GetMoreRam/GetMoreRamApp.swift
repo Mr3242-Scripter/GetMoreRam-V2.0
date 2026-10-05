@@ -2,44 +2,42 @@
 //  GetMoreRamApp.swift
 //  GetMoreRam
 //
-//  Created by s s on 2025/3/14.
-//
 
 import SwiftUI
 
 @main
 struct GetMoreRamApp: App {
     @StateObject private var appDelegate = AppDelegate()
-    
+
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .onAppear {
-                    appDelegate.performStartupTasks()
-                }
+                .onAppear { appDelegate.performStartupTasks() }
         }
     }
 }
 
-class AppDelegate: NSObject, ObservableObject {
+@MainActor
+final class AppDelegate: NSObject, ObservableObject {
+    private var hasStarted = false
+
     func performStartupTasks() {
-        let sharedModel = DataManager.shared.model
-        
-        // Restore login state from Keychain
-        if let email = Keychain.shared.appleIDEmailAddress,
-           let password = Keychain.shared.appleIDPassword {
-            // Login info is available, user was previously logged in
-            // We'll restore the session when they navigate to settings
-        }
-        
-        // Check if auto-fire on startup is enabled
-        if sharedModel.autoFireOnStartup && sharedModel.isLogin {
-            Task {
-                await autoFireOnStartup()
+        guard !hasStarted else { return }
+        hasStarted = true
+
+        Task {
+            let sharedModel = DataManager.shared.model
+            do {
+                try await sharedModel.restoreSession()
+                if sharedModel.autoFireOnStartup && sharedModel.isLogin {
+                    await autoFireOnStartup()
+                }
+            } catch {
+                print("Startup restore error: \(error.detailedDescription)")
             }
         }
     }
-    
+
     private func autoFireOnStartup() async {
         let viewModel = AppIDViewModel()
         do {
