@@ -76,6 +76,8 @@ class SharedModel: ObservableObject {
     @AppStorage("AutoFireOnStartup") var autoFireOnStartup = false
     @AppStorage("CustomAppName") var customAppName = "MemoryBoost Pro"
     @AppStorage("CustomAppIconURL") var customAppIconURL = ""
+    @AppStorage("SelectedTeamIdentifier") var selectedTeamIdentifier = ""
+    @Published private(set) var isRestoringSession = false
 
     var session: AppleAPISession?
     var account: Account?
@@ -92,12 +94,48 @@ class SharedModel: ObservableObject {
     }
 
     func restorePersistedLoginState() {
-        let hasCredentials = Keychain.shared.appleIDEmailAddress != nil &&
-                            Keychain.shared.appleIDPassword != nil
+        isLogin = false
+    }
 
-        if hasCredentials {
-            isLogin = true
+    @MainActor
+    func restoreSession() async throws {
+        guard let appleID = Keychain.shared.appleIDEmailAddress,
+              let password = Keychain.shared.appleIDPassword else {
+            isLogin = false
+            return
         }
+
+        isRestoringSession = true
+        defer { isRestoringSession = false }
+
+        let anisetteData = try await AnisetteDataHelper.shared.getAnisetteData()
+        let (restoredAccount, restoredSession) = try await AppleAPI.shared.authenticate(
+            appleID: appleID,
+            password: password,
+            anisetteData: anisetteData
+        ) { _ in }
+
+        let teams = try await AppleAPI.shared.fetchTeamsForAccount(
+            account: restoredAccount,
+            session: restoredSession
+        )
+        guard !teams.isEmpty else {
+            throw "Unable to Fetch Team!"
+        }
+
+        account = restoredAccount
+        session = restoredSession
+
+        if let savedTeam = teams.first(where: { $0.identifier == selectedTeamIdentifier }) {
+            team = savedTeam
+        } else if teams.count == 1 {
+            team = teams[0]
+            selectedTeamIdentifier = teams[0].identifier
+        } else {
+            team = nil
+        }
+
+        isLogin = team != nil
     }
     
     func loadCustomAppSettings() {
