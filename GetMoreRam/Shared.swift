@@ -95,6 +95,16 @@ class SharedModel: ObservableObject {
 
     func restorePersistedLoginState() {
         isLogin = false
+        guard Keychain.shared.appleIDEmailAddress != nil,
+              Keychain.shared.appleIDPassword != nil else { return }
+        Task { @MainActor in
+            do {
+                try await restoreSession()
+            } catch {
+                print("Failed to restore persisted session: \(error)")
+                isLogin = false
+            }
+        }
     }
 
     @MainActor
