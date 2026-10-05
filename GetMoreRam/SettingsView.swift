@@ -22,6 +22,7 @@ struct SettingsView: View {
     @State private var importResultShow = false
     @State private var importResultInfo = ""
     @State private var isImportingSideStoreAccount = false
+    @State private var showSideStoreImporter = false
     @State private var showAppNameEditor = false
     @State private var showAppIconEditor = false
     @State private var newAppName = ""
@@ -141,6 +142,9 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showAppIconEditor) {
             appIconEditorSheet
+        }
+        .fileImporter(isPresented: $showSideStoreImporter, allowedContentTypes: [.json], allowsMultipleSelection: false) { result in
+            handleSideStoreImport(result)
         }
         .onAppear {
             if sharedModel.isLogin {
@@ -462,53 +466,62 @@ struct SettingsView: View {
     }
 
     func importFromSideStore() {
-        let sideStoreURL = URL(
-            string: "sidestore://import-account"
-        )!
-
-        if UIApplication.shared.canOpenURL(sideStoreURL) {
-            UIApplication.shared.open(sideStoreURL) { success in
-                if success {
-                    DispatchQueue.main.asyncAfter(
-                        deadline: .now() + 0.5
-                    ) {
-                        handleSideStoreReturn()
-                    }
-                }
-            }
-        } else {
-            errorInfo =
-                "SideStore is not installed. Please install SideStore first."
-            errorShow = true
-        }
+        showSideStoreImporter = true
     }
 
-    func handleSideStoreReturn() {
-        if let email = Keychain.shared.appleIDEmailAddress,
-           Keychain.shared.appleIDPassword != nil {
-
-            importResultInfo =
-                "Successfully imported account from SideStore: \(email)"
-
-            importResultShow = true
-            self.email = email
-
-            sharedModel.session = nil
-            sharedModel.account = nil
-            sharedModel.team = nil
-            sharedModel.isLogin = false
-
-            viewModel.availableTeams = []
-            viewModel.teamSelectionShow = false
-        } else {
-            errorInfo =
-                "Failed to import account from SideStore."
+    private func handleSideStoreImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .failure(let error):
+            errorInfo = error.localizedDescription
             errorShow = true
+        case .success(let urls):
+            guard let url = urls.first else {
+                errorInfo = "No SideStore account file was selected."
+                errorShow = true
+                return
+            }
+
+            let accessed = url.startAccessingSecurityScopedResource()
+            defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+
+            do {
+                let imported = try SideStoreAccountImporter.importAccount(from: Data(contentsOf: url))
+                email = imported.email
+                sharedModel.session = nil
+                sharedModel.account = nil
+                sharedModel.team = nil
+                sharedModel.selectedTeamIdentifier = ""
+                sharedModel.isLogin = false
+                viewModel.availableTeams = []
+                viewModel.teamSelectionShow = false
+
+                Task { @MainActor in
+                    do {
+                        try await sharedModel.restoreSession()
+                        if sharedModel.isLogin {
+                            importResultInfo = "Successfully imported and restored: \(imported.email)"
+                            importResultShow = true
+                            email = imported.email
+                            teamId = sharedModel.team?.identifier ?? ""
+                        } else {
+                            importResultInfo = "Account imported. Sign in again if Apple requires verification."
+                            importResultShow = true
+                        }
+                    } catch {
+                        errorInfo = "Account imported, but the session could not be restored. Please sign in again if Apple requests verification.\n\n\(error.detailedDescription)"
+                        errorShow = true
+                    }
+                }
+            } catch {
+                errorInfo = error.detailedDescription
+                errorShow = true
+            }
         }
     }
 
     func selectTeam(_ team: Team) {
         sharedModel.team = team
+        sharedModel.selectedTeamIdentifier = team.identifier
         sharedModel.isLogin = true
 
         email = sharedModel.account?.appleID ?? email
@@ -525,6 +538,7 @@ struct SettingsView: View {
         sharedModel.session = nil
         sharedModel.account = nil
         sharedModel.team = nil
+        sharedModel.selectedTeamIdentifier = ""
         sharedModel.isLogin = false
 
         email = ""
