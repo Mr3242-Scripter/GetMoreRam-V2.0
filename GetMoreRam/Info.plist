@@ -6,6 +6,14 @@
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
-	</dict>
+		<key>CFBundleDisplayName</key>
+	<string>More Ram!</string>
+	<key>CFBundleName</key>
+	<string>More Ram!</string>
+	<key>NSCameraUsageDescription</key>
+	<string>More Ram uses the camera when you choose to set a custom app icon.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>More Ram uses your photos when you choose a custom app icon.</string>
+</dict>
 </dict>
 </plist>
