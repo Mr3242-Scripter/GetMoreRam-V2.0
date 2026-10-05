@@ -69,12 +69,12 @@ extension String: @retroactive LocalizedError {
 
 class SharedModel: ObservableObject {
     @Published var isLogin = false
-    @Published var appDisplayName = "MemoryBoost Pro"
+    @Published var appDisplayName = "More Ram!"
     @Published var appIconData: UIImage? = nil
     
     @AppStorage("AnisetteServer") var anisetteServerURL = "https://ani.sidestore.io"
     @AppStorage("AutoFireOnStartup") var autoFireOnStartup = false
-    @AppStorage("CustomAppName") var customAppName = "MemoryBoost Pro"
+    @AppStorage("CustomAppName") var customAppName = "More Ram!"
     @AppStorage("CustomAppIconURL") var customAppIconURL = ""
     @AppStorage("SelectedTeamIdentifier") var selectedTeamIdentifier = ""
     @Published private(set) var isRestoringSession = false
@@ -167,6 +167,11 @@ class SharedModel: ObservableObject {
         appDisplayName = newName
     }
     
+    func updateAppIcon(image: UIImage) {
+        appIconData = image
+        customAppIconURL = ""
+    }
+
     func updateAppIcon(from urlString: String) {
         customAppIconURL = urlString
         loadAppIconFromURL(urlString)
