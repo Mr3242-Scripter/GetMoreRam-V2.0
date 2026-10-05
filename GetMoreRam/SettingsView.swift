@@ -7,6 +7,8 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+import PhotosUI
+import UIKit
 import StosSign_API
 import StosSign_Auth
 import StosSign_Common
@@ -27,6 +29,10 @@ struct SettingsView: View {
     @State private var showAppIconEditor = false
     @State private var newAppName = ""
     @State private var newAppIconURL = ""
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var pendingAppIcon: UIImage?
+    @State private var showCamera = false
+    @State private var showAppIconFileImporter = false
 
     var body: some View {
         Form {
@@ -102,8 +108,10 @@ struct SettingsView: View {
                     }
                 }
 
-                Button("Set App Icon from URL") {
+                Button("Set App Icon") {
                     newAppIconURL = sharedModel.customAppIconURL
+                    pendingAppIcon = nil
+                    selectedPhotoItem = nil
                     showAppIconEditor = true
                 }
             } header: {
@@ -309,91 +317,117 @@ struct SettingsView: View {
     var appIconEditorSheet: some View {
         NavigationView {
             Form {
+                Section("Choose an icon") {
+                    PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                        Label("Choose from Photos", systemImage: "photo")
+                    }
+                    Button { showCamera = true } label {
+                        Label("Take a Photo", systemImage: "camera")
+                    }
+                    Button { showAppIconFileImporter = true } label {
+                        Label("Choose from Files", systemImage: "folder")
+                    }
+                }
                 Section {
-                    TextField(
-                        "Icon URL",
-                        text: $newAppIconURL
-                    )
-                    .autocapitalization(.none)
-                    .disableAutocorrection(true)
+                    TextField("Icon URL", text: $newAppIconURL)
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
                 } header: {
                     Text("Enter icon image URL")
                 } footer: {
-                    Text(
-                        "Paste a direct URL to a 1024x1024 PNG or JPEG image"
-                    )
+                    Text("Paste a direct URL to a 1024x1024 PNG or JPEG image")
                 }
-
-                if !newAppIconURL.isEmpty {
+                if let pendingAppIcon {
                     Section {
-                        AsyncImage(
-                            url: URL(string: newAppIconURL)
-                        ) { phase in
+                        pendingAppIcon.resizable().scaledToFit().frame(height: 150)
+                    } header: { Text("Preview") }
+                } else if !newAppIconURL.isEmpty {
+                    Section {
+                        AsyncImage(url: URL(string: newAppIconURL)) { phase in
                             switch phase {
                             case .success(let image):
-                                image
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(height: 150)
-
+                                image.resizable().scaledToFit().frame(height: 150)
                             case .empty:
-                                ProgressView()
-                                    .frame(height: 150)
-
+                                ProgressView().frame(height: 150)
                             case .failure:
-                                HStack {
-                                    Spacer()
-
-                                    VStack {
-                                        Image(
-                                            systemName:
-                                                "exclamationmark.triangle"
-                                        )
-                                        .foregroundColor(.orange)
-
-                                        Text("Failed to load preview")
-                                            .font(.caption)
-                                    }
-
-                                    Spacer()
-                                }
-                                .frame(height: 150)
-
+                                Text("Failed to load preview").font(.caption).frame(height: 150)
                             @unknown default:
                                 EmptyView()
                             }
                         }
-                    } header: {
-                        Text("Preview")
-                    }
+                    } header: { Text("Preview") }
                 }
-
                 Section {
                     Button("Apply Icon") {
-                        sharedModel.updateAppIcon(
-                            from: newAppIconURL
-                        )
-
+                        if let pendingAppIcon {
+                            sharedModel.updateAppIcon(image: pendingAppIcon)
+                        } else {
+                            sharedModel.updateAppIcon(from: newAppIconURL)
+                        }
+                        pendingAppIcon = nil
+                        selectedPhotoItem = nil
                         showAppIconEditor = false
                     }
-                    .disabled(
-                        newAppIconURL
-                            .trimmingCharacters(
-                                in: .whitespacesAndNewlines
-                            )
-                            .isEmpty
-                    )
+                    .disabled(pendingAppIcon == nil && newAppIconURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
             .navigationTitle("Set App Icon")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel", role: .cancel) {
-                        showAppIconEditor = false
+            .onChange(of: selectedPhotoItem) { newItem in
+                guard let newItem else { return }
+                Task {
+                    if let data = try? await newItem.loadTransferable(type: Data.self),
+                       let image = UIImage(data: data) {
+                        await MainActor.run {
+                            pendingAppIcon = image
+                            newAppIconURL = ""
+                        }
                     }
                 }
             }
+            .sheet(isPresented: $showCamera) {
+                CameraImagePicker { image in
+                    pendingAppIcon = image
+                    newAppIconURL = ""
+                    showCamera = false
+                }
+            }
+            .fileImporter(isPresented: $showAppIconFileImporter, allowedContentTypes: [.image], allowsMultipleSelection: false) { result in
+                guard case .success(let urls) = result, let url = urls.first else { return }
+                let accessed = url.startAccessingSecurityScopedResource()
+                defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+                if let data = try? Data(contentsOf: url), let image = UIImage(data: data) {
+                    pendingAppIcon = image
+                    newAppIconURL = ""
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel", role: .cancel) { showAppIconEditor = false }
+                }
+            }
+        }
+    }
+
+    private struct CameraImagePicker: UIViewControllerRepresentable {
+        let onImagePicked: (UIImage) -> Void
+        func makeCoordinator() -> Coordinator { Coordinator(onImagePicked: onImagePicked) }
+        func makeUIViewController(context: Context) -> UIImagePickerController {
+            let picker = UIImagePickerController()
+            picker.sourceType = .camera
+            picker.delegate = context.coordinator
+            picker.allowsEditing = false
+            return picker
+        }
+        func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+        final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+            let onImagePicked: (UIImage) -> Void
+            init(onImagePicked: @escaping (UIImage) -> Void) { self.onImagePicked = onImagePicked }
+            func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+                if let image = info[.originalImage] as? UIImage { onImagePicked(image) }
+                picker.dismiss(animated: true)
+            }
+            func imagePickerControllerDidCancel(_ picker: UIImagePickerController) { picker.dismiss(animated: true) }
         }
     }
 
