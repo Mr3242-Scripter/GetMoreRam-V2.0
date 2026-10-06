@@ -1,162 +1,157 @@
-bmFtZTogWGNvZGUgLSBCdWlsZAoKb246IAogIHB1c2g6CiAgcHVsbF9yZXF1
-ZXN0OgogIHdvcmtmbG93X2Rpc3BhdGNoOgogICAgaW5wdXRzOiAKICAgICAg
-cmVsZWFzZV9fbmlnaHRseToKICAgICAgICBkZXNjcmlwdGlvbjogQ3JlYXRl
-IGEgbmlnaHRseSByZWxlYXNlCiAgICAgICAgdHlwZTogYm9vbGVhbgogICAg
-ICAgIHJlcXVpcmVkOiBmYWxzZQoKam9iczoKICBidWlsZDoKICAgIG5hbWU6
-IEJ1aWxkIHVzaW5nIHhjb2RlYnVpbGQgY29tbWFuZAogICAgcnVucy1vbjog
-bWFjb3MtMTQKICAgIGVudjoKICAgICAgc2NoZW1lOiBHZXRNb3JlUmFtCiAg
-ICAgIGFyY2hpdmVfcGF0aDogYXJjaGl2ZQogICAgb3V0cHV0czoKICAgICAg
-c2NoZW1lOiAke3sgc3RlcHMuc2NoZW1lLm91dHB1dHMuc2NoZW1lIH19CiAg
-ICAgIGFyY2hpdmVfcGF0aDogJHt7IGVudi5hcmNoaXZlX3BhdGggfX0KCiAg
-ICBzdGVwczoKICAgICAgLSB1c2VzOiBtYXhpbS1sb2Jhbm92L3NldHVwLXhj
-b2RlQHYxCiAgICAgICAgd2l0aDoKICAgICAgICAgIHhjb2RlLXZlcnNpb246
-ICcyNi40JwogICAgICAtIG5hbWU6IENoZWNrb3V0CiAgICAgICAgdXNlczog
-YWN0aW9ucy9jaGVja291dEB2MwogICAgICAgIHdpdGg6CiAgICAgICAgICBz
-dWJtb2R1bGVzOiByZWN1cnNpdmUKICAgICAgLSBuYW1lOiBTZXQgU2NoZW1l
-CiAgICAgICAgaWQ6IHNjaGVtZQogICAgICAgIHJ1bjogfAogICAgICAgICAg
-aWYgWyAkc2NoZW1lID0gZGVmYXVsdCBdCiAgICAgICAgICB0aGVuCiAgICAg
-ICAgICAgIHNjaGVtZV9saXN0PSQoeGNvZGVidWlsZCAtbGlzdCAtanNvbiB8
-IHRyIC1kICJcbiIpCiAgICAgICAgICAgIHNjaGVtZT0kKGVjaG8gJHNjaGVt
-ZV9saXN0IHwgcnVieSAtZSAicmVxdWlyZSAnanNvbic7IHB1dHMgSlNPTi5w
-YXJzZShTVERJTi5nZXRzKVsncHJvamVjdCddWyd0YXJnZXRzJ11bMF0iKQog
-ICAgICAgICAgICBlY2hvIFVzaW5nIGRlZmF1bHQgc2NoZW1lOiAkc2NoZW1l
-CiAgICAgICAgICBlbHNlCiAgICAgICAgICAgIGVjaG8gVXNpbmcgY29uZmln
-dXJlZCBzY2hlbWU6ICRzY2hlbWUKICAgICAgICAgIGZpCiAgICAgICAgICBl
-Y2hvICJzY2hlbWU9JHNjaGVtZSIgPj4gJEdJVEhVQl9PVVRQVVQKICAgICAg
-LSBuYW1lOiBTZXQgZmlsZXR5cGVfcGFyYW1ldGVyCiAgICAgICAgaWQ6IGZp
-bGV0eXBlX3BhcmFtZXRlcgogICAgICAgIHJ1bjogfAogICAgICAgICAgZmls
-ZXR5cGVfcGFyYW1ldGVyPWBscyAtQSB8IGdyZXAgLWkgXFwueGN3b3Jrc3Bh
-Y2VcJCAmJiBlY2hvIHdvcmtzcGFjZSB8fCBlY2hvIHByb2plY3RgCiAgICAg
-ICAgICBlY2hvICJmaWxldHlwZV9wYXJhbWV0ZXI9JGZpbGV0eXBlX3BhcmFt
-ZXRlciIgPj4gJEdJVEhVQl9PVVRQVVQKICAgICAgLSBuYW1lOiBTZXQgZmls
-ZV90b19idWlsZAogICAgICAgIGlkOiBmaWxlX3RvX2J1aWxkCiAgICAgICAg
-cnVuOiB8CiAgICAgICAgICBmaWxlX3RvX2J1aWxkPWBscyAtQSB8IGdyZXAg
-LWkgXFwueGN3b3Jrc3BhY2VcJCB8fCBscyAtQSB8IGdyZXAgLWkgXFwueGNv
-ZGVwcm9qXCRgCiAgICAgICAgICBmaWxlX3RvX2J1aWxkPWBlY2hvICRmaWxl
-X3RvX2J1aWxkIHwgYXdrICd7JDE9JDE7cHJpbnR9J2AKICAgICAgICAgIGVj
-aG8gImZpbGVfdG9fYnVpbGQ9JGZpbGVfdG9fYnVpbGQiID4+ICRHSVRIVUJf
-T1VUUFVUCiAgICAgIC0gbmFtZTogQnVpbGQKICAgICAgICBlbnY6CiAgICAg
-ICAgICBzY2hlbWU6ICR7eyBzdGVwcy5zY2hlbWUub3V0cHV0cy5zY2hlbWUg
-fX0KICAgICAgICAgIGZpbGV0eXBlX3BhcmFtZXRlcjogJHt7IHN0ZXBzLmZp
-bGV0eXBlX3BhcmFtZXRlci5vdXRwdXRzLmZpbGV0eXBlX3BhcmFtZXRlciB9
-fQogICAgICAgICAgZmlsZV90b19idWlsZDogJHt7IHN0ZXBzLmZpbGVfdG9f
-YnVpbGQub3V0cHV0cy5maWxlX3RvX2J1aWxkIH19CiAgICAgICAgcnVuOiBz
-ZXQgLW8gcGlwZWZhaWwKcm0gLXJmICIkUlVOTkVSX1RFTVAvRGVyaXZlZERh
-dGEiICIkSE9NRS9MaWJyYXJ5L0RldmVsb3Blci9YY29kZS9EZXJpdmVkRGF0
-YSIgIiRIT01FL0xpYnJhcnkvRGV2ZWxvcGVyL1hjb2RlL01vZHVsZUNhY2hl
-Lm5vaW5kZXgiCmZvciBhdHRlbXB0IGluIDEgMjsgZG8KICBlY2hvICJYY29k
-ZSBidWlsZCBhdHRlbXB0ICRhdHRlbXB0IgogIGlmIHhjb2RlYnVpbGQgY2xl
-YW4gYnVpbGQgLXNjaGVtZSAiJHNjaGVtZSIgLSIkZmlsZXR5cGVfcGFyYW1l
-dGVyIiAiJGZpbGVfdG9fYnVpbGQiIC1zZGsgaXBob25lb3MgLWFyY2ggYXJt
-NjQgLWNvbmZpZ3VyYXRpb24gUmVsZWFzZSAtZGVyaXZlZERhdGFQYXRoICIk
-UlVOTkVSX1RFTVAvRGVyaXZlZERhdGEiIC1wYXJhbGxlbGl6ZVRhcmdldHMg
-Tk8gLWpvYnMgMSBDT0RFX1NJR05fSURFTlRJVFk9IiIgQ09ERV9TSUdOSU5H
-X1JFUVVJUkVEPU5PIENPREVfU0lHTklOR19BTExPV0VEPU5PIENPTVBJTEVS
-X0lOREVYX1NUT1JFX0VOQUJMRT1OTyBTV0lGVF9JTkRFWF9TVE9SRV9FTkFC
-TEU9Tk8gfCB4Y3ByZXR0eTsgdGhlbgogICAgZXhpdCAwCiAgZmkKICBybSAt
-cmYgIiRSVU5ORVJfVEVNUC9EZXJpdmVkRGF0YSIgIiRIT01FL0xpYnJhcnkv
-RGV2ZWxvcGVyL1hjb2RlL0Rlcml2ZWREYXRhIiAiJEhPTUUvTGlicmFyeS9E
-ZXZlbG9wZXIvWGNvZGUvTW9kdWxlQ2FjaGUubm9pbmRleCIKICBzbGVlcCAz
-CmRvbmUKZXhpdCA2NQogICAgICAtIG5hbWU6IEFuYWx5emUKICAgICAgICBl
-bnY6CiAgICAgICAgICBzY2hlbWU6ICR7eyBzdGVwcy5zY2hlbWUub3V0cHV0
-cy5zY2hlbWUgfX0KICAgICAgICAgIGZpbGV0eXBlX3BhcmFtZXRlcjogJHt7
-IHN0ZXBzLmZpbGV0eXBlX3BhcmFtZXRlci5vdXRwdXRzLmZpbGV0eXBlX3Bh
-cmFtZXRlciB9fQogICAgICAgICAgZmlsZV90b19idWlsZDogJHt7IHN0ZXBz
-LmZpbGVfdG9fYnVpbGQub3V0cHV0cy5maWxlX3RvX2J1aWxkIH19CiAgICAg
-ICAgcnVuOiB4Y29kZWJ1aWxkIGFuYWx5emUgLXNjaGVtZSAiJHNjaGVtZSIg
-LSIkZmlsZXR5cGVfcGFyYW1ldGVyIiAiJGZpbGVfdG9fYnVpbGQiIC1zZGsg
-aXBob25lb3MgLWFyY2ggYXJtNjQgLWNvbmZpZ3VyYXRpb24gUmVsZWFzZSBD
-T0RFX1NJR05fSURFTlRJVFk9IiIgQ09ERV9TSUdOSU5HX1JFUVVJUkVEPU5P
-IENPREVfU0lHTklOR19BTExPV0VEPU5PIHwgeGNwcmV0dHkgJiYgZXhpdCAk
-e1BJUEVTVEFUVVNbMF19CiAgICAgIC0gbmFtZTogQXJjaGl2ZQogICAgICAg
-IGVudjoKICAgICAgICAgIHNjaGVtZTogJHt7IHN0ZXBzLnNjaGVtZS5vdXRw
-dXRzLnNjaGVtZSB9fQogICAgICAgICAgZmlsZXR5cGVfcGFyYW1ldGVyOiAk
-e3sgc3RlcHMuZmlsZXR5cGVfcGFyYW1ldGVyLm91dHB1dHMuZmlsZXR5cGVf
-cGFyYW1ldGVyIH19CiAgICAgICAgICBmaWxlX3RvX2J1aWxkOiAke3sgc3Rl
-cHMuZmlsZV90b19idWlsZC5vdXRwdXRzLmZpbGVfdG9fYnVpbGQgfX0KICAg
-ICAgICBydW46IHhjb2RlYnVpbGQgYXJjaGl2ZSAtYXJjaGl2ZVBhdGggIiRh
-cmNoaXZlX3BhdGgiIC1zY2hlbWUgIiRzY2hlbWUiIC0iJGZpbGV0eXBlX3Bh
-cmFtZXRlciIgIiRmaWxlX3RvX2J1aWxkIiAtc2RrIGlwaG9uZW9zIC1hcmNo
-IGFybTY0IC1jb25maWd1cmF0aW9uIFJlbGVhc2UgQ09ERV9TSUdOX0lERU5U
-SVRZPSIiIENPREVfU0lHTklOR19SRVFVSVJFRD1OTyBDT0RFX1NJR05JTkdf
-QUxMT1dFRD1OTyB8IHhjcHJldHR5ICYmIGV4aXQgJHtQSVBFU1RBVFVTWzBd
-fQogICAgICAtIG5hbWU6IFRhciBCdWlsZCBBcnRpZmFjdAogICAgICAgIHJ1
-bjogdGFyIC1jdmYgIiRhcmNoaXZlX3BhdGgueGNhcmNoaXZlLnRhciIgIiRh
-cmNoaXZlX3BhdGgueGNhcmNoaXZlIgogICAgICAtIG5hbWU6IFVwbG9hZCBh
-IEJ1aWxkIEFydGlmYWN0CiAgICAgICAgdXNlczogYWN0aW9ucy91cGxvYWQt
-YXJ0aWZhY3RAdjQKICAgICAgICB3aXRoOgogICAgICAgICAgbmFtZTogJHt7
-IGVudi5hcmNoaXZlX3BhdGggfX0ueGNhcmNoaXZlLnRhcgogICAgICAgICAg
-cGF0aDogJHt7IGVudi5hcmNoaXZlX3BhdGggfX0ueGNhcmNoaXZlLnRhcgoK
-ICBwYWNrYWdlOgogICAgbmFtZTogQ3JlYXRlIGZha2Utc2lnbmVkIGlwYQog
-ICAgcnVucy1vbjogdWJ1bnR1LWxhdGVzdAogICAgbmVlZHM6IFtidWlsZF0K
-ICAgIGVudjoKICAgICAgc2NoZW1lOiAke3sgbmVlZHMuYnVpbGQub3V0cHV0
-cy5zY2hlbWUgfX0KICAgICAgYXJjaGl2ZV9wYXRoOiAke3sgbmVlZHMuYnVp
-bGQub3V0cHV0cy5hcmNoaXZlX3BhdGggfX0KICAgIG91dHB1dHM6CiAgICAg
-IGFydGlmYWN0OiAke3sgZW52LnNjaGVtZSB9fS5pcGEKCiAgICBzdGVwczoK
-ICAgICAgLSBuYW1lOiBEb3dubG9hZCBhIEJ1aWxkIEFydGlmYWN0CiAgICAg
-ICAgdXNlczogYWN0aW9ucy9kb3dubG9hZC1hcnRpZmFjdEB2NAogICAgICAg
-IHdpdGg6CiAgICAgICAgICBuYW1lOiAke3sgZW52LmFyY2hpdmVfcGF0aCB9
-fS54Y2FyY2hpdmUudGFyCiAgICAgIC0gbmFtZTogRXh0cmFjdCBCdWlsZCBB
-cnRpZmFjdAogICAgICAgIHJ1bjogdGFyIC14ZiAiJGFyY2hpdmVfcGF0aC54
-Y2FyY2hpdmUudGFyIgogICAgICAtIG5hbWU6IEluc3RhbGwgbGRpZAogICAg
-ICAgIHJ1bjogfAogICAgICAgICAgaWYgWyBgdW5hbWUgLXNgID0gIkxpbnV4
-IiBdOyB0aGVuCiAgICAgICAgICAgIGN1cmwgLXNTTCAtbyAvdXNyL2xvY2Fs
-L2Jpbi9sZGlkICIke3sgZ2l0aHViLnNlcnZlcl91cmwgfX0vUHJvY3Vyc3Vz
-VGVhbS9sZGlkL3JlbGVhc2VzL2xhdGVzdC9kb3dubG9hZC9sZGlkX2xpbnV4
-X2B1bmFtZSAtbWAiCiAgICAgICAgICAgIGNobW9kICt4IC91c3IvbG9jYWwv
-YmluL2xkaWQKICAgICAgICAgIGVsaWYgWyBgdW5hbWUgLXNgID0gIkRhcndp
-biIgXTsgdGhlbgogICAgICAgICAgICBicmV3IGluc3RhbGwgbGRpZAogICAg
-ICAgICAgZWxzZQogICAgICAgICAgICBleGl0IDEKICAgICAgICAgIGZpCiAg
-ICAgIC0gbmFtZTogRmFrZXNpZ24KICAgICAgICBydW46IHwKICAgICAgICAg
-IGZpbmQgIiRhcmNoaXZlX3BhdGgueGNhcmNoaXZlL1Byb2R1Y3RzL0FwcGxp
-Y2F0aW9ucy8kc2NoZW1lLmFwcCIgLXR5cGUgZCAtcGF0aCAnKi9GcmFtZXdv
-cmtzLyouZnJhbWV3b3JrJyAtZXhlYyBsZGlkIC1TIFx7XH0gXDsKICAgICAg
-ICAgIGxkaWQgLVMgIiRhcmNoaXZlX3BhdGgueGNhcmNoaXZlL1Byb2R1Y3Rz
-L0FwcGxpY2F0aW9ucy8kc2NoZW1lLmFwcCIKICAgICAgLSBuYW1lOiBDcmVh
-dGUgSVBBCiAgICAgICAgcnVuOiB8CiAgICAgICAgICBtdiAiJGFyY2hpdmVf
-cGF0aC54Y2FyY2hpdmUvUHJvZHVjdHMvQXBwbGljYXRpb25zIiBQYXlsb2Fk
-CiAgICAgICAgICB6aXAgLXIgIiRzY2hlbWUuaXBhIiAiUGF5bG9hZCIgLXgg
-Ii5fKiIgLXggIi5EU19TdG9yZSIgLXggIl9fTUFDT1NYIgogICAgICAtIG5h
-bWU6IFVwbG9hZCBhIEJ1aWxkIEFydGlmYWN0CiAgICAgICAgdXNlczogYWN0
-aW9ucy91cGxvYWQtYXJ0aWZhY3RAdjQKICAgICAgICB3aXRoOgogICAgICAg
-ICAgbmFtZTogJHt7IGVudi5zY2hlbWUgfX0uaXBhCiAgICAgICAgICBwYXRo
-OiAke3sgZW52LnNjaGVtZSB9fS5pcGEKCiAgcmVsZWFzZV9fbmlnaHRseToK
-ICAgIG5hbWU6IE5pZ2h0bHkgUmVsZWFzZQogICAgcGVybWlzc2lvbnM6CiAg
-ICAgIGNvbnRlbnRzOiB3cml0ZQogICAgaWY6IGlucHV0cy5yZWxlYXNlX19u
-aWdodGx5IHx8IGdpdGh1Yi5ldmVudF9uYW1lID09ICdwdXNoJyAmJiBnaXRo
-dWIucmVmID09IGZvcm1hdCgncmVmcy9oZWFkcy97MH0nLCBnaXRodWIuZXZl
-bnQucmVwb3NpdG9yeS5kZWZhdWx0X2JyYW5jaCkKICAgIHJ1bnMtb246IHVi
-dW50dS1sYXRlc3QKICAgIG5lZWRzOiBbcGFja2FnZV0KICAgIGNvbmN1cnJl
-bmN5OgogICAgICBncm91cDogcmVsZWFzZV9fbmlnaHRseQogICAgICBjYW5j
-ZWwtaW4tcHJvZ3Jlc3M6IHRydWUKCiAgICBzdGVwczoKICAgICAgLSBuYW1l
-OiBEb3dubG9hZCBhIEJ1aWxkIEFydGlmYWN0CiAgICAgICAgdXNlczogYWN0
-aW9ucy9kb3dubG9hZC1hcnRpZmFjdEB2NAogICAgICAgIHdpdGg6CiAgICAg
-ICAgICBuYW1lOiAke3sgbmVlZHMucGFja2FnZS5vdXRwdXRzLmFydGlmYWN0
-IH19CiAgICAgIC0gbmFtZTogTmlnaHRseSBSZWxlYXNlCiAgICAgICAgdXNl
-czogYW5kZWxmL25pZ2h0bHktcmVsZWFzZUB2MQogICAgICAgIGVudjoKICAg
-ICAgICAgIEdJVEhVQl9UT0tFTjogJHt7IHNlY3JldHMuR0lUSFVCX1RPS0VO
-IH19CiAgICAgICAgd2l0aDogCiAgICAgICAgICBib2R5OiB8CiAgICAgICAg
-ICAgIFRoaXMgaXMgYSBuaWdodGx5IHJlbGVhc2UgW2NyZWF0ZWQgYXV0b21h
-dGljYWxseSB3aXRoIEdpdEh1YiBBY3Rpb25zIHdvcmtmbG93XSgke3sgZ2l0
-aHViLnNlcnZlcl91cmwgfX0vJHt7IGdpdGh1Yi5yZXBvc2l0b3J5IH19L2Fj
-dGlvbnMvcnVucy8ke3sgZ2l0aHViLnJ1bl9pZCB9fS9hdHRlbXB0cy8ke3sg
-Z2l0aHViLnJ1bl9hdHRlbXB0IH19KS4KICAgICAgICAgIGZpbGVzOiB8CiAg
-ICAgICAgICAgICR7eyBuZWVkcy5wYWNrYWdlLm91dHB1dHMuYXJ0aWZhY3Qg
-fX0K      - name: Build
+name: Xcode - Build
+
+on: 
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs: 
+      release__nightly:
+        description: Create a nightly release
+        type: boolean
+        required: false
+
+jobs:
+  build:
+    name: Build using xcodebuild command
+    runs-on: macos-14
+    env:
+      scheme: GetMoreRam
+      archive_path: archive
+    outputs:
+      scheme: ${{ steps.scheme.outputs.scheme }}
+      archive_path: ${{ env.archive_path }}
+
+    steps:
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.4'
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Set Scheme
+        id: scheme
+        run: |
+          if [ $scheme = default ]
+          then
+            scheme_list=$(xcodebuild -list -json | tr -d "\n")
+            scheme=$(echo $scheme_list | ruby -e "require 'json'; puts JSON.parse(STDIN.gets)['project']['targets'][0]")
+            echo Using default scheme: $scheme
+          else
+            echo Using configured scheme: $scheme
+          fi
+          echo "scheme=$scheme" >> $GITHUB_OUTPUT
+      - name: Set filetype_parameter
+        id: filetype_parameter
+        run: |
+          filetype_parameter=`ls -A | grep -i \\.xcworkspace\$ && echo workspace || echo project`
+          echo "filetype_parameter=$filetype_parameter" >> $GITHUB_OUTPUT
+      - name: Set file_to_build
+        id: file_to_build
+        run: |
+          file_to_build=`ls -A | grep -i \\.xcworkspace\$ || ls -A | grep -i \\.xcodeproj\$`
+          file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
+          echo "file_to_build=$file_to_build" >> $GITHUB_OUTPUT
+      - name: Build
         env:
           scheme: ${{ steps.scheme.outputs.scheme }}
           filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
           file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
-        run: |
-          set -o pipefail
-          rm -rf "$RUNNER_TEMP/DerivedData" "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Developer/Xcode/ModuleCache.noindex"
-          for attempt in 1 2; do
-            echo "Xcode build attempt $attempt"
-            if xcodebuild clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release -derivedDataPath "$RUNNER_TEMP/DerivedData" -parallelizeTargets NO -jobs 1 CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO COMPILER_INDEX_STORE_ENABLE=NO SWIFT_INDEX_STORE_ENABLE=NO | xcpretty; then
-              exit 0
-            fi
-            rm -rf "$RUNNER_TEMP/DerivedData" "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Developer/Xcode/ModuleCache.noindex"
-            sleep 3
-          done
-          exit 65
+        run: set -o pipefail
+rm -rf "$RUNNER_TEMP/DerivedData" "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Developer/Xcode/ModuleCache.noindex"
+for attempt in 1 2; do
+  echo "Xcode build attempt $attempt"
+  if xcodebuild clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release -derivedDataPath "$RUNNER_TEMP/DerivedData" -parallelizeTargets NO -jobs 1 CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO COMPILER_INDEX_STORE_ENABLE=NO SWIFT_INDEX_STORE_ENABLE=NO | xcpretty; then
+    exit 0
+  fi
+  rm -rf "$RUNNER_TEMP/DerivedData" "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Developer/Xcode/ModuleCache.noindex"
+  sleep 3
+done
+exit 65
+      - name: Analyze
+        env:
+          scheme: ${{ steps.scheme.outputs.scheme }}
+          filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
+          file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
+        run: xcodebuild analyze -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty && exit ${PIPESTATUS[0]}
+      - name: Archive
+        env:
+          scheme: ${{ steps.scheme.outputs.scheme }}
+          filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
+          file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
+        run: xcodebuild archive -archivePath "$archive_path" -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty && exit ${PIPESTATUS[0]}
+      - name: Tar Build Artifact
+        run: tar -cvf "$archive_path.xcarchive.tar" "$archive_path.xcarchive"
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.archive_path }}.xcarchive.tar
+          path: ${{ env.archive_path }}.xcarchive.tar
 
+  package:
+    name: Create fake-signed ipa
+    runs-on: ubuntu-latest
+    needs: [build]
+    env:
+      scheme: ${{ needs.build.outputs.scheme }}
+      archive_path: ${{ needs.build.outputs.archive_path }}
+    outputs:
+      artifact: ${{ env.scheme }}.ipa
+
+    steps:
+      - name: Download a Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.archive_path }}.xcarchive.tar
+      - name: Extract Build Artifact
+        run: tar -xf "$archive_path.xcarchive.tar"
+      - name: Install ldid
+        run: |
+          if [ `uname -s` = "Linux" ]; then
+            curl -sSL -o /usr/local/bin/ldid "${{ github.server_url }}/ProcursusTeam/ldid/releases/latest/download/ldid_linux_`uname -m`"
+            chmod +x /usr/local/bin/ldid
+          elif [ `uname -s` = "Darwin" ]; then
+            brew install ldid
+          else
+            exit 1
+          fi
+      - name: Fakesign
+        run: |
+          find "$archive_path.xcarchive/Products/Applications/$scheme.app" -type d -path '*/Frameworks/*.framework' -exec ldid -S \{\} \;
+          ldid -S "$archive_path.xcarchive/Products/Applications/$scheme.app"
+      - name: Create IPA
+        run: |
+          mv "$archive_path.xcarchive/Products/Applications" Payload
+          zip -r "$scheme.ipa" "Payload" -x "._*" -x ".DS_Store" -x "__MACOSX"
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.scheme }}.ipa
+          path: ${{ env.scheme }}.ipa
+
+  release__nightly:
+    name: Nightly Release
+    permissions:
+      contents: write
+    if: inputs.release__nightly || github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    needs: [package]
+    concurrency:
+      group: release__nightly
+      cancel-in-progress: true
+
+    steps:
+      - name: Download a Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.package.outputs.artifact }}
+      - name: Nightly Release
+        uses: andelf/nightly-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with: 
+          body: |
+            This is a nightly release [created automatically with GitHub Actions workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}).
+          files: |
+            ${{ needs.package.outputs.artifact }}
+ù©ûË•uÈÔ±»^ôÎ-zõ,r¶zã≠¶Îl±»^ôÁ‚ïÎr•ÍZ≠©ûµÍÏµÍl~)^∑*^•™⁄ôÎ^Æã≠¶Îl~)^∑*^•™⁄ôÎ^≠¯•z⁄∫)]≤◊©±¯•z⁄∫)]¢Îi∫€äW≠°ª¢ï⁄Óû«≠¢ò©yˆ¢ñπ´}4DS√ˇÍ‚ΩÁCj÷á8¡?.&ÎjºøÎﬁñä^Øı‹°◊øÍ‚ΩÁCj÷á8¡?.&ÎjºøÎﬁñä^Øı‹°◊ø2ánï‡örß¢)›{Ë≠´mzjmä}vváúÜÖ‹°◊õ∫)]j€^öõZ∂◊¶¶ÿü≈ yª¢ï◊%y©€∫)]±»^ôÎÖÈû~)^∑*^•™⁄ôÎ^≠¯•z⁄∫)]±Ÿ"¶'zã≠»ZÆn∏râﬂä´jÿ®ù•y´uÍ‚ΩÁCj÷èjÿQP”DE1?ﬁÆ+ﬁt6≠jñ´jY^ñ,ﬁM™‡z€::≥PéDà“‘»M
