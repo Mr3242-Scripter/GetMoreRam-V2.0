@@ -59,8 +59,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/SourcePackages/checkouts"
           url=$(grep -o 'https://github.com/stossy11/StosSign' GetMoreRam.xcodeproj/project.pbxproj | head -1)
           git clone --depth 1 "$url" "$RUNNER_TEMP/SourcePackages/checkouts/StosSign"
-          sed -i '' -e '/name: "StosSign_CodeSign",/s/,$//' -e '/name: "StosSign_Common",/s/,$//' "$RUNNER_TEMP/SourcePackages/checkouts/StosSign/Package.swift"
-          sed -i '' -e '/^    ],$/N' -e 's/^    ],\n    cLanguageStandard/    ]\n    cLanguageStandard/' "$RUNNER_TEMP/SourcePackages/checkouts/StosSign/Package.swift"
+          sed -i '' -e '/name: "StosSign_CodeSign",/s/,$//' -e '/name: "StosSign_Common",/s/,$//' -e '/^    ),$/s/,$//' "$RUNNER_TEMP/SourcePackages/checkouts/StosSign/Package.swift"
 
       - name: Build
         env:
