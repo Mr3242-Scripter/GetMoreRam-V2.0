@@ -158,9 +158,15 @@ struct SettingsView: View {
         .sheet(isPresented: $showAppIconEditor) {
             appIconEditorSheet
         }
-        .fileImporter(isPresented: $showSideStoreImporter, allowedContentTypes: [UTType(filenameExtension: "sideconf") ?? .json, .json], allowsMultipleSelection: false) { result in
+        .fileImporter(
+            isPresented: $showSideStoreImporter,
+            allowedContentTypes: [.data],
+            allowsMultipleSelection: true
+        ) { result in
             handleSideStoreImport(result)
         }
+        .fileDialogBrowserOptions(.displayFileExtensions)
+        .fileDialogMessage("Sélectionnez un fichier .sideconf")
         .sheet(isPresented: $showImportPasswordPrompt) {
             NavigationStack {
                 Form {
@@ -549,8 +555,18 @@ struct SettingsView: View {
             errorInfo = error.localizedDescription
             errorShow = true
         case .success(let urls):
-            guard let url = urls.first else {
+            guard !urls.isEmpty else {
                 errorInfo = "Aucun fichier SideStore sélectionné."
+                errorShow = true
+                return
+            }
+            guard urls.count == 1, let url = urls.first else {
+                errorInfo = "GetMoreRam ne peut activer qu’un seul compte SideStore à la fois. Sélectionnez un seul fichier .sideconf."
+                errorShow = true
+                return
+            }
+            guard url.pathExtension.lowercased() == "sideconf" else {
+                errorInfo = "Le fichier sélectionné n’est pas un fichier .sideconf."
                 errorShow = true
                 return
             }
