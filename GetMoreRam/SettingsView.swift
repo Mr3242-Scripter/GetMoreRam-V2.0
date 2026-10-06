@@ -60,7 +60,7 @@ struct SettingsView: View {
                     Button("Import SideStore account (.sideconf)") {
                         importFromSideStore()
                     }
-                    Text("How to get a .sideconf file: Open SideStore → Settings → Backup & Restore Export, then save the exported .sideconf file to the Files app. Come back here, tap Import SideStore account (.sideconf), and select the file. Do not rename or edit the file.")
+                    Text("How to get a .sideconf file: Open SideStore -> Settings -> Backup & Restore -> Export Account. Select Export Account, set a password, and enable the option to include the account password. Save the exported .sideconf file to the Files app. Then return here, tap Import SideStore account (.sideconf), and select the file. Do not rename or edit it. The export password will be required when importing.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.leading)
@@ -651,3 +651,4 @@ struct SettingsView: View {
         }
     }
 }
+  
