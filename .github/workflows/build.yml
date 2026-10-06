@@ -1,94 +1,146 @@
 name: Xcode - Build
 
-on:
+on: 
   push:
   pull_request:
   workflow_dispatch:
-    inputs:
+    inputs: 
       release__nightly:
         description: Create a nightly release
-        required: false
-        default: false
         type: boolean
-
-permissions:
-  contents: write
+        required: false
 
 jobs:
   build:
-    name: Build GetMoreRam
-    runs-on: macos-26
+    name: Build using xcodebuild command
+    runs-on: macos-latest
     env:
-      SCHEME: GetMoreRam
-      ARCHIVE_PATH: archive
-      SWIFT_USE_INTEGRATED_DRIVER: YES
-      SWIFT_ENABLE_EXPLICIT_MODULES: NO
-      SWIFT_INDEX_STORE_ENABLE: NO
-      COMPILER_INDEX_STORE_ENABLE: NO
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
+      scheme: GetMoreRam
+      archive_path: archive
+    outputs:
+      scheme: ${{ steps.scheme.outputs.scheme }}
+      archive_path: ${{ env.archive_path }}
 
-      - name: Select Xcode 26.4
-        uses: maxim-lobanov/setup-xcode@v1
+    steps:
+      - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: '26.4'
-
-      - name: Build and archive
-        shell: bash
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Set Scheme
+        id: scheme
         run: |
-          set -euo pipefail
-          rm -rf "$HOME/Library/Developer/Xcode/DerivedData"
-          rm -rf "$HOME/Library/Developer/Xcode/ModuleCache.noindex"
-          workspace="$(find . -maxdepth 3 -name '*.xcworkspace' -not -path '*/Pods/*' | head -n 1 || true)"
-          project="$(find . -maxdepth 3 -name '*.xcodeproj' -not -path '*/Pods/*' | head -n 1 || true)"
-          if [ -n "$workspace" ]; then
-            target_args=(-workspace "$workspace")
-          elif [ -n "$project" ]; then
-            target_args=(-project "$project")
+          if [ $scheme = default ]
+          then
+            scheme_list=$(xcodebuild -list -json | tr -d "\n")
+            scheme=$(echo $scheme_list | ruby -e "require 'json'; puts JSON.parse(STDIN.gets)['project']['targets'][0]")
+            echo Using default scheme: $scheme
           else
-            echo "No Xcode workspace or project found" >&2
+            echo Using configured scheme: $scheme
+          fi
+          echo "scheme=$scheme" >> $GITHUB_OUTPUT
+      - name: Set filetype_parameter
+        id: filetype_parameter
+        run: |
+          filetype_parameter=`ls -A | grep -i \\.xcworkspace\$ && echo workspace || echo project`
+          echo "filetype_parameter=$filetype_parameter" >> $GITHUB_OUTPUT
+      - name: Set file_to_build
+        id: file_to_build
+        run: |
+          file_to_build=`ls -A | grep -i \\.xcworkspace\$ || ls -A | grep -i \\.xcodeproj\$`
+          file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
+          echo "file_to_build=$file_to_build" >> $GITHUB_OUTPUT
+      - name: Build
+        env:
+          scheme: ${{ steps.scheme.outputs.scheme }}
+          filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
+          file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
+        run: xcodebuild clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty && exit ${PIPESTATUS[0]}
+      - name: Analyze
+        env:
+          scheme: ${{ steps.scheme.outputs.scheme }}
+          filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
+          file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
+        run: xcodebuild analyze -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty && exit ${PIPESTATUS[0]}
+      - name: Archive
+        env:
+          scheme: ${{ steps.scheme.outputs.scheme }}
+          filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
+          file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
+        run: xcodebuild archive -archivePath "$archive_path" -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty && exit ${PIPESTATUS[0]}
+      - name: Tar Build Artifact
+        run: tar -cvf "$archive_path.xcarchive.tar" "$archive_path.xcarchive"
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.archive_path }}.xcarchive.tar
+          path: ${{ env.archive_path }}.xcarchive.tar
+
+  package:
+    name: Create fake-signed ipa
+    runs-on: ubuntu-latest
+    needs: [build]
+    env:
+      scheme: ${{ needs.build.outputs.scheme }}
+      archive_path: ${{ needs.build.outputs.archive_path }}
+    outputs:
+      artifact: ${{ env.scheme }}.ipa
+
+    steps:
+      - name: Download a Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.archive_path }}.xcarchive.tar
+      - name: Extract Build Artifact
+        run: tar -xf "$archive_path.xcarchive.tar"
+      - name: Install ldid
+        run: |
+          if [ `uname -s` = "Linux" ]; then
+            curl -sSL -o /usr/local/bin/ldid "${{ github.server_url }}/ProcursusTeam/ldid/releases/latest/download/ldid_linux_`uname -m`"
+            chmod +x /usr/local/bin/ldid
+          elif [ `uname -s` = "Darwin" ]; then
+            brew install ldid
+          else
             exit 1
           fi
-          set -o pipefail
-          xcodebuild "${target_args[@]}" \
-            -scheme "$SCHEME" \
-            -sdk iphoneos \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            -archivePath "$ARCHIVE_PATH" \
-            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
-            -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages" \
-            -parallelizeTargets NO \
-            -jobs 1 \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            clean archive | xcpretty
-
-      - name: Create unsigned IPA
-        shell: bash
+      - name: Fakesign
         run: |
-          set -euo pipefail
-          app="$(find "$ARCHIVE_PATH.xcarchive/Products/Applications" -maxdepth 1 -name '*.app' -print -quit)"
-          test -n "$app"
-          rm -rf Payload GetMoreRam.ipa
-          mkdir -p Payload
-          cp -R "$app" Payload/
-          /usr/bin/zip -qry GetMoreRam.ipa Payload
-          rm -rf Payload
-
-      - name: Upload IPA
+          find "$archive_path.xcarchive/Products/Applications/$scheme.app" -type d -path '*/Frameworks/*.framework' -exec ldid -S \{\} \;
+          ldid -S "$archive_path.xcarchive/Products/Applications/$scheme.app"
+      - name: Create IPA
+        run: |
+          mv "$archive_path.xcarchive/Products/Applications" Payload
+          zip -r "$scheme.ipa" "Payload" -x "._*" -x ".DS_Store" -x "__MACOSX"
+      - name: Upload a Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GetMoreRam-ipa
-          path: GetMoreRam.ipa
+          name: ${{ env.scheme }}.ipa
+          path: ${{ env.scheme }}.ipa
 
-      - name: Upload Xcode logs
-        if: always()
-        uses: actions/upload-artifact@v4
+  release__nightly:
+    name: Nightly Release
+    permissions:
+      contents: write
+    if: inputs.release__nightly || github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    needs: [package]
+    concurrency:
+      group: release__nightly
+      cancel-in-progress: true
+
+    steps:
+      - name: Download a Build Artifact
+        uses: actions/download-artifact@v4
         with:
-          name: xcode-build-logs
-          path: ${{ runner.temp }}/DerivedData/Logs
-          if-no-files-found: ignore
+          name: ${{ needs.package.outputs.artifact }}
+      - name: Nightly Release
+        uses: andelf/nightly-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with: 
+          body: |
+            This is a nightly release [created automatically with GitHub Actions workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}).
+          files: |
+            ${{ needs.package.outputs.artifact }}
