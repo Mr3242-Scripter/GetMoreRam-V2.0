@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CryptoKit
 
 struct SideStoreAccount: Decodable {
     let email: String
@@ -49,6 +50,9 @@ struct SideStoreAccount: Decodable {
 enum SideStoreAccountImportError: LocalizedError {
     case missingRequiredField(String)
     case invalidLocalUser
+    case invalidFilePassword
+    case decryptionFailed
+    case invalidDataFormat
     
     var errorDescription: String? {
         switch self {
@@ -56,6 +60,12 @@ enum SideStoreAccountImportError: LocalizedError {
             return "The SideStore account file is missing \(field)."
         case .invalidLocalUser:
             return "The SideStore account file has an invalid local_user value."
+        case .invalidFilePassword:
+            return "The SideStore export password is required."
+        case .decryptionFailed:
+            return "The SideStore file password is incorrect or the .sideconf file is corrupted."
+        case .invalidDataFormat:
+            return "The selected file is not a valid encrypted SideStore .sideconf file."
         }
     }
     
@@ -70,28 +80,72 @@ enum SideStoreAccountImportError: LocalizedError {
 }
 
 enum SideStoreAccountImporter {
-    static func importAccount(from data: Data) throws -> SideStoreAccount {
-        let account = try JSONDecoder().decode(SideStoreAccount.self, from: data)
-        
-        let email = account.email.trimmingCharacters(in: .whitespacesAndNewlines)
-        let password = account.password.trimmingCharacters(in: .whitespacesAndNewlines)
-        let adiPB = account.adiPB.trimmingCharacters(in: .whitespacesAndNewlines)
-        let localUser = account.localUser.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        guard !email.isEmpty else { throw SideStoreAccountImportError.missingRequiredField("email") }
-        guard !password.isEmpty else { throw SideStoreAccountImportError.missingRequiredField("password") }
-        guard !adiPB.isEmpty else { throw SideStoreAccountImportError.missingRequiredField("adiPB") }
-        guard !localUser.isEmpty else { throw SideStoreAccountImportError.missingRequiredField("local_user") }
-        guard let decodedLocalUser = Data(base64Encoded: localUser), decodedLocalUser.count == 16 else {
-            throw SideStoreAccountImportError.invalidLocalUser
+    private static let saltLength = 16
+    private static let keyLength = 32
+    private static let iterations = 10_000
+
+    private static func deriveKey(password: String, salt: Data) -> SymmetricKey {
+        let passwordKey = SymmetricKey(data: Data(password.utf8))
+        var block = Data(salt)
+        block.append(contentsOf: [0, 0, 0, 1])
+
+        var u = Data(HMAC<SHA256>.authenticationCode(for: block, using: passwordKey))
+        var result = u
+
+        if iterations > 1 {
+            for _ in 2...iterations {
+                u = Data(HMAC<SHA256>.authenticationCode(for: u, using: passwordKey))
+                for index in 0..<keyLength {
+                    result[index] ^= u[index]
+                }
+            }
         }
-        
-        Keychain.shared.appleIDEmailAddress = email
-        Keychain.shared.appleIDPassword = password
-        Keychain.shared.adiPb = adiPB
-        Keychain.shared.identifier = localUser
-        AnisetteDataHelper.shared.resetClientInfo()
-        
-        return SideStoreAccount(email: email, password: password, adiPB: adiPB, localUser: localUser)
+
+        return SymmetricKey(data: result)
+    }
+
+    static func importAccount(from encryptedData: Data, filePassword: String) throws -> SideStoreAccount {
+        let password = filePassword.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !password.isEmpty else {
+            throw SideStoreAccountImportError.invalidFilePassword
+        }
+        guard encryptedData.count > saltLength else {
+            throw SideStoreAccountImportError.invalidDataFormat
+        }
+
+        let salt = encryptedData.prefix(saltLength)
+        let combined = encryptedData.dropFirst(saltLength)
+        let key = deriveKey(password: password, salt: Data(salt))
+
+        do {
+            let sealedBox = try AES.GCM.SealedBox(combined: Data(combined))
+            let decryptedData = try AES.GCM.open(sealedBox, using: key)
+            let account = try JSONDecoder().decode(SideStoreAccount.self, from: decryptedData)
+
+            let email = account.email.trimmingCharacters(in: .whitespacesAndNewlines)
+            let accountPassword = account.password.trimmingCharacters(in: .whitespacesAndNewlines)
+            let adiPB = account.adiPB.trimmingCharacters(in: .whitespacesAndNewlines)
+            let localUser = account.localUser.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            guard !email.isEmpty else { throw SideStoreAccountImportError.missingRequiredField("email") }
+            guard !accountPassword.isEmpty else { throw SideStoreAccountImportError.missingRequiredField("password") }
+            guard !adiPB.isEmpty else { throw SideStoreAccountImportError.missingRequiredField("adiPB") }
+            guard !localUser.isEmpty else { throw SideStoreAccountImportError.missingRequiredField("local_user") }
+            guard let decodedLocalUser = Data(base64Encoded: localUser), decodedLocalUser.count == 16 else {
+                throw SideStoreAccountImportError.invalidLocalUser
+            }
+
+            Keychain.shared.appleIDEmailAddress = email
+            Keychain.shared.appleIDPassword = accountPassword
+            Keychain.shared.adiPb = adiPB
+            Keychain.shared.identifier = localUser
+            AnisetteDataHelper.shared.resetClientInfo()
+
+            return SideStoreAccount(email: email, password: accountPassword, adiPB: adiPB, localUser: localUser)
+        } catch let error as SideStoreAccountImportError {
+            throw error
+        } catch {
+            throw SideStoreAccountImportError.decryptionFailed
+        }
     }
 }
