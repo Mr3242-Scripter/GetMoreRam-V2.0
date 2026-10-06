@@ -52,6 +52,15 @@ jobs:
           file_to_build=`ls -A | grep -i \\.xcworkspace\$ || ls -A | grep -i \\.xcodeproj\$`
           file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
           echo "file_to_build=$file_to_build" >> $GITHUB_OUTPUT
+      - name: Prepare StosSign package checkout
+        run: |
+          set -e
+          rm -rf "$RUNNER_TEMP/SourcePackages"
+          mkdir -p "$RUNNER_TEMP/SourcePackages/checkouts"
+          url=$(grep -o 'https://github.com/stossy11/StosSign' GetMoreRam.xcodeproj/project.pbxproj | head -1)
+          git clone --depth 1 "$url" "$RUNNER_TEMP/SourcePackages/checkouts/StosSign"
+          sed -i '' -e '113s/,$//' -e '116s/,$//' -e '118s/,$//' "$RUNNER_TEMP/SourcePackages/checkouts/StosSign/Package.swift"
+
       - name: Build
         env:
           scheme: ${{ steps.scheme.outputs.scheme }}
@@ -65,7 +74,7 @@ jobs:
           set -o pipefail
           rm -rf "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Developer/Xcode/ModuleCache.noindex"
           find . -type d -path '*/Preview Content/Preview Assets.xcassets' -prune -exec mv {} {}.disabled \;
-          xcodebuild clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release -derivedDataPath "$RUNNER_TEMP/DerivedData" -jobs 1 CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty
+          xcodebuild clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release -derivedDataPath "$RUNNER_TEMP/DerivedData" -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages" -skipPackageUpdates -jobs 1 CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty
           exit ${PIPESTATUS[0]}
       - name: Analyze
         env:
