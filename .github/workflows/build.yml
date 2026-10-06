@@ -59,8 +59,8 @@ jobs:
           mkdir -p "$RUNNER_TEMP/SourcePackages/checkouts"
           url=$(grep -o 'https://github.com/stossy11/StosSign' GetMoreRam.xcodeproj/project.pbxproj | head -1)
           git clone --depth 1 "$url" "$RUNNER_TEMP/SourcePackages/checkouts/StosSign"
-          python3 -c 'import re,sys; from pathlib import Path; p=Path(sys.argv[1]); s=p.read_text(); s=re.sub(r'\\.target\\(\\s*name: "StosSign_CodeSign",\\s*// path: "Sources/StosSign/StosSign_CodeSign"\\s*\\)', '.target(name: "StosSign_CodeSign")', s); s=re.sub(r'\\.target\\(\\s*name: "StosSign_Common",\\s*\\)', '.target(name: "StosSign_Common")', s); p.write_text(s)' "$RUNNER_TEMP/SourcePackages/checkouts/StosSign/Package.swift"
-          grep -n -A2 -B1 'StosSign_CodeSign\|StosSign_Common' "$RUNNER_TEMP/SourcePackages/checkouts/StosSign/Package.swift"
+          sed -i '' '110,112c\\        .target(name: "StosSign_CodeSign"),' "$RUNNER_TEMP/SourcePackages/checkouts/StosSign/Package.swift"
+          sed -i '' '113,115c\\        .target(name: "StosSign_Common"),' "$RUNNER_TEMP/SourcePackages/checkouts/StosSign/Package.swift"
 
       - name: Build
         env:
