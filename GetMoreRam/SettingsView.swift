@@ -161,7 +161,7 @@ struct SettingsView: View {
         }
         .fileImporter(
             isPresented: $showSideStoreImporter,
-            allowedContentTypes: [UTType(filenameExtension: "sideconf", conformingTo: .data)!]
+            allowedContentTypes: [UTType(importedAs: "com.sidestore.sideconf", conformingTo: .data)]
         ) { result in
             handleSideStoreImport(result)
         }
