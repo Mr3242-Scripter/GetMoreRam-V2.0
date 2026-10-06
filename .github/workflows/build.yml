@@ -13,11 +13,9 @@ on:
 jobs:
   build:
     name: Build using xcodebuild command
-    runs-on: macos-15
+    runs-on: macos-latest
     env:
       scheme: GetMoreRam
-      SWIFT_USE_INTEGRATED_DRIVER: NO
-      SWIFT_ENABLE_BATCH_MODE: NO
       archive_path: archive
     outputs:
       scheme: ${{ steps.scheme.outputs.scheme }}
@@ -26,7 +24,7 @@ jobs:
     steps:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '26.3'
+          xcode-version: '26.4'
       - name: Checkout
         uses: actions/checkout@v3
         with:
@@ -57,27 +55,21 @@ jobs:
       - name: Build
         env:
           scheme: ${{ steps.scheme.outputs.scheme }}
-          SWIFT_USE_INTEGRATED_DRIVER: NO
-      SWIFT_ENABLE_BATCH_MODE: NO
           filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
           file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
-        run: xcodebuild clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -parallelizeTargets NO -jobs 1 | xcpretty && exit ${PIPESTATUS[0]}
+        run: xcodebuild clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty && exit ${PIPESTATUS[0]}
       - name: Analyze
         env:
           scheme: ${{ steps.scheme.outputs.scheme }}
-          SWIFT_USE_INTEGRATED_DRIVER: NO
-      SWIFT_ENABLE_BATCH_MODE: NO
           filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
           file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
-        run: xcodebuild analyze -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -parallelizeTargets NO -jobs 1 | xcpretty && exit ${PIPESTATUS[0]}
+        run: xcodebuild analyze -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty && exit ${PIPESTATUS[0]}
       - name: Archive
         env:
           scheme: ${{ steps.scheme.outputs.scheme }}
-          SWIFT_USE_INTEGRATED_DRIVER: NO
-      SWIFT_ENABLE_BATCH_MODE: NO
           filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
           file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
-        run: xcodebuild archive -archivePath "$archive_path" -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -parallelizeTargets NO -jobs 1 | xcpretty && exit ${PIPESTATUS[0]}
+        run: xcodebuild archive -archivePath "$archive_path" -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty && exit ${PIPESTATUS[0]}
       - name: Tar Build Artifact
         run: tar -cvf "$archive_path.xcarchive.tar" "$archive_path.xcarchive"
       - name: Upload a Build Artifact
