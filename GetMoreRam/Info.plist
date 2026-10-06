@@ -15,5 +15,26 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>More Ram uses your photos when you choose a custom app icon.</string>
 </dict>
+    <key>UTImportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>com.sidestore.sideconf</string>
+            <key>UTTypeDescription</key>
+            <string>SideStore Account Configuration</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+                <string>public.content</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>sideconf</string>
+                </array>
+            </dict>
+        </dict>
+    </array>
 </dict>
 </plist>
