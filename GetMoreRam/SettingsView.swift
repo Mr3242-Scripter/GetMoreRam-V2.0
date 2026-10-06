@@ -28,6 +28,7 @@ struct SettingsView: View {
     @State private var showImportPasswordPrompt = false
     @State private var importPassword = ""
     @State private var pendingImportedAccount: SideStoreAccount?
+    @State private var pendingImportData: Data?
     @State private var showAppNameEditor = false
     @State private var showAppIconEditor = false
     @State private var newAppName = ""
@@ -160,8 +161,8 @@ struct SettingsView: View {
         }
         .fileImporter(
             isPresented: $showSideStoreImporter,
-            allowedContentTypes: [.item],
-            allowsMultipleSelection: true
+            allowedContentTypes: [UTType(importedAs: "com.sidestore.sideconf", conformingTo: .data)],
+            allowsMultipleSelection: false
         ) { result in
             handleSideStoreImport(result)
         }
@@ -191,6 +192,7 @@ struct SettingsView: View {
                         Button("Annuler") {
                             importPassword = ""
                             pendingImportedAccount = nil
+                            pendingImportData = nil
                             showImportPasswordPrompt = false
                         }
                     }
@@ -571,8 +573,9 @@ struct SettingsView: View {
             let accessed = url.startAccessingSecurityScopedResource()
             defer { if accessed { url.stopAccessingSecurityScopedResource() } }
             do {
-                let imported = try SideStoreAccountImporter.importAccount(from: Data(contentsOf: url))
-                pendingImportedAccount = imported
+                let data = try Data(contentsOf: url)
+                pendingImportData = data
+                pendingImportedAccount = nil
                 importPassword = ""
                 showImportPasswordPrompt = true
             } catch {
@@ -583,17 +586,23 @@ struct SettingsView: View {
     }
 
     private func completeSideStoreImport() {
-        guard let imported = pendingImportedAccount else {
-            errorInfo = "Aucun compte SideStore à importer."
+        guard let data = pendingImportData else {
+            errorInfo = "Aucun fichier SideStore à importer."
             errorShow = true
             return
         }
-        guard importPassword == imported.password else {
-            errorInfo = "Le mot de passe ne correspond pas à celui utilisé pour créer ce fichier SideStore."
+
+        do {
+            let imported = try SideStoreAccountImporter.importAccount(from: data, filePassword: importPassword)
+            pendingImportedAccount = imported
+        } catch {
+            errorInfo = error.localizedDescription
             errorShow = true
             return
         }
+
         showImportPasswordPrompt = false
+        pendingImportData = nil
         importPassword = ""
         pendingImportedAccount = nil
         email = imported.email
