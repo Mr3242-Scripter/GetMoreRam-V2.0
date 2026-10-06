@@ -75,6 +75,12 @@ enum SideStoreAccountImportError: LocalizedError {
             return "Choose a SideStore account JSON file that contains email, password, adiPB, and local_user."
         case .invalidLocalUser:
             return "local_user should be a base64 encoded 16-byte identifier."
+        case .invalidFilePassword:
+            return "Enter the password used to export the SideStore account."
+        case .decryptionFailed:
+            return "Check the export password and make sure the .sideconf file is intact."
+        case .invalidDataFormat:
+            return "Choose a valid encrypted SideStore .sideconf file."
         }
     }
 }
