@@ -72,6 +72,7 @@ jobs:
           SWIFT_INDEX_STORE_ENABLE: NO
         run: |
           set -o pipefail
+          sed -i '' -e '/repositoryURL = "https:\/\/github.com\/stossy11\/StosSign";/{n;s/branch = main;/kind = revision;/;n;s/kind = branch;/revision = 79bcafa6b2d80e8751fcd85f4163f89db09a51c4;/;}' GetMoreRam.xcodeproj/project.pbxproj
           rm -rf "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Developer/Xcode/ModuleCache.noindex"
           find . -type d -path '*/Preview Content/Preview Assets.xcassets' -prune -exec mv {} {}.disabled \;
           xcodebuild clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release -derivedDataPath "$RUNNER_TEMP/DerivedData" -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages" -skipPackageUpdates -jobs 1 CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty
