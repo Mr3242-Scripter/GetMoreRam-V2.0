@@ -61,7 +61,10 @@ jobs:
           git clone --depth 1 "$url" "$RUNNER_TEMP/SourcePackages/checkouts/StosSign"
           awk 'NR==110 {print "        .target(name: \"StosSign_CodeSign\"),"; next} NR>=111 && NR<=112 {next} NR==113 {print "        .target(name: \"StosSign_Common\"),"; next} NR>=114 && NR<=115 {next} {print}' "$RUNNER_TEMP/SourcePackages/checkouts/StosSign/Package.swift" > "$RUNNER_TEMP/SourcePackages/checkouts/StosSign/Package.swift.tmp"
           mv "$RUNNER_TEMP/SourcePackages/checkouts/StosSign/Package.swift.tmp" "$RUNNER_TEMP/SourcePackages/checkouts/StosSign/Package.swift"
-          sed -n '108,120p' "$RUNNER_TEMP/SourcePackages/checkouts/StosSign/Package.swift"
+          git -C "$RUNNER_TEMP/SourcePackages/checkouts/StosSign" -c user.name=CI -c user.email=ci@example.com add Package.swift
+          git -C "$RUNNER_TEMP/SourcePackages/checkouts/StosSign" -c user.name=CI -c user.email=ci@example.com commit -m "CI: fix malformed Package.swift"
+          git config --global url."file://$RUNNER_TEMP/SourcePackages/checkouts/StosSign".insteadOf "https://github.com/stossy11/StosSign"
+
 
       - name: Build
         env:
