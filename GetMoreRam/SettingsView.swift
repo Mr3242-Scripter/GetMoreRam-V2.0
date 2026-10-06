@@ -174,9 +174,9 @@ struct SettingsView: View {
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                     } header: {
-                        Text("Vérification du fichier")
+                        Text("VÃ©rification du fichier")
                     } footer: {
-                        Text("Entre le mot de passe utilisé lors de la création de ce fichier SideStore. Le mot de passe n'est pas enregistré par GetMoreRam.")
+                        Text("Entre le mot de passe utilisÃ© lors de la crÃ©ation de ce fichier SideStore. Le mot de passe n'est pas enregistrÃ© par GetMoreRam.")
                     }
                     Section {
                         Button("Importer le compte") {
@@ -298,7 +298,7 @@ struct SettingsView: View {
                                 .foregroundStyle(.primary)
 
                             Text(
-                                "\(team.identifier) · \(teamTypeDescription(team.type))"
+                                "\(team.identifier) Â· \(teamTypeDescription(team.type))"
                             )
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -556,17 +556,17 @@ struct SettingsView: View {
             errorShow = true
         case .success(let urls):
             guard !urls.isEmpty else {
-                errorInfo = "Aucun fichier SideStore sélectionné."
+                errorInfo = "Aucun fichier SideStore sÃ©lectionnÃ©."
                 errorShow = true
                 return
             }
             guard urls.count == 1, let url = urls.first else {
-                errorInfo = "GetMoreRam ne peut activer quun seul compte SideStore à la fois. Sélectionnez un seul fichier .sideconf."
+                errorInfo = "GetMoreRam ne peut activer qu'un seul compte SideStore Ã  la fois. SÃ©lectionnez un seul fichier .sideconf."
                 errorShow = true
                 return
             }
             guard url.pathExtension.lowercased() == "sideconf" else {
-                errorInfo = "Le fichier sélectionné nest pas un fichier .sideconf."
+                errorInfo = "Le fichier sÃ©lectionnÃ© n'est pas un fichier .sideconf."
                 errorShow = true
                 return
             }
@@ -587,7 +587,7 @@ struct SettingsView: View {
 
     private func completeSideStoreImport() {
         guard let data = pendingImportData else {
-            errorInfo = "Aucun fichier SideStore à importer."
+            errorInfo = "Aucun fichier SideStore Ã  importer."
             errorShow = true
             return
         }
