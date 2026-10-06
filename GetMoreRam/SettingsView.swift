@@ -161,8 +161,7 @@ struct SettingsView: View {
         }
         .fileImporter(
             isPresented: $showSideStoreImporter,
-            allowedContentTypes: [UTType(importedAs: "com.sidestore.sideconf", conformingTo: .data)],
-            allowsMultipleSelection: false
+            allowedContentTypes: [UTType(importedAs: "com.sidestore.sideconf", conformingTo: .data)]
         ) { result in
             handleSideStoreImport(result)
         }
@@ -170,13 +169,13 @@ struct SettingsView: View {
             NavigationStack {
                 Form {
                     Section {
-                        SecureField("Mot de passe", text: $importPassword)
+                        SecureField("Clé de déchiffrement", text: $importPassword)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                     } header: {
-                        Text("Vérification du fichier")
+                        Text("VÃ©rification du fichier")
                     } footer: {
-                        Text("Entre le mot de passe utilisé lors de la création de ce fichier SideStore. Le mot de passe n'est pas enregistré par GetMoreRam.")
+                        Text("Entre le mot de passe utilisÃ© lors de la crÃ©ation de ce fichier SideStore. Le mot de passe n'est pas enregistrÃ© par GetMoreRam.")
                     }
                     Section {
                         Button("Importer le compte") {
@@ -298,7 +297,7 @@ struct SettingsView: View {
                                 .foregroundStyle(.primary)
 
                             Text(
-                                "\(team.identifier) · \(teamTypeDescription(team.type))"
+                                "\(team.identifier) Â· \(teamTypeDescription(team.type))"
                             )
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -549,22 +548,12 @@ struct SettingsView: View {
         showSideStoreImporter = true
     }
 
-    private func handleSideStoreImport(_ result: Result<[URL], Error>) {
+    private func handleSideStoreImport(_ result: Result<URL, Error>) {
         switch result {
         case .failure(let error):
             errorInfo = error.localizedDescription
             errorShow = true
-        case .success(let urls):
-            guard !urls.isEmpty else {
-                errorInfo = "Aucun fichier SideStore sélectionné."
-                errorShow = true
-                return
-            }
-            guard urls.count == 1, let url = urls.first else {
-                errorInfo = "GetMoreRam ne peut activer qu'un seul compte SideStore à la fois. Sélectionnez un seul fichier .sideconf."
-                errorShow = true
-                return
-            }
+        case .success(let url):
             guard url.pathExtension.lowercased() == "sideconf" else {
                 errorInfo = "Le fichier sélectionné n'est pas un fichier .sideconf."
                 errorShow = true
@@ -573,8 +562,7 @@ struct SettingsView: View {
             let accessed = url.startAccessingSecurityScopedResource()
             defer { if accessed { url.stopAccessingSecurityScopedResource() } }
             do {
-                let data = try Data(contentsOf: url)
-                pendingImportData = data
+                pendingImportData = try Data(contentsOf: url)
                 pendingImportedAccount = nil
                 importPassword = ""
                 showImportPasswordPrompt = true
@@ -587,7 +575,7 @@ struct SettingsView: View {
 
     private func completeSideStoreImport() {
         guard let data = pendingImportData else {
-            errorInfo = "Aucun fichier SideStore à importer."
+            errorInfo = "Aucun fichier SideStore Ã  importer."
             errorShow = true
             return
         }
