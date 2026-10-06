@@ -57,7 +57,16 @@ jobs:
           scheme: ${{ steps.scheme.outputs.scheme }}
           filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
           file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
-        run: xcodebuild clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty && exit ${PIPESTATUS[0]}
+          SWIFT_USE_INTEGRATED_DRIVER: NO
+          SWIFT_ENABLE_EXPLICIT_MODULES: NO
+          COMPILER_INDEX_STORE_ENABLE: NO
+          SWIFT_INDEX_STORE_ENABLE: NO
+        run: |
+          set -o pipefail
+          rm -rf "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Developer/Xcode/ModuleCache.noindex"
+          find . -type d -path '*/Preview Content/Preview Assets.xcassets' -prune -exec mv {} {}.disabled \;
+          xcodebuild clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release -derivedDataPath "$RUNNER_TEMP/DerivedData" -parallelizeTargets NO -jobs 1 CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty
+          exit ${PIPESTATUS[0]}
       - name: Analyze
         env:
           scheme: ${{ steps.scheme.outputs.scheme }}
