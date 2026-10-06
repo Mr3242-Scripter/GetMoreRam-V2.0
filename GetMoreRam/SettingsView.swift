@@ -165,7 +165,6 @@ struct SettingsView: View {
         ) { result in
             handleSideStoreImport(result)
         }
-        .fileDialogConfirmationLabel("Open")
         .sheet(isPresented: $showImportPasswordPrompt) {
             NavigationStack {
                 Form {
