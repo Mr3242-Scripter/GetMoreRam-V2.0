@@ -593,7 +593,8 @@ struct SettingsView: View {
         }
 
         do {
-            let imported = try SideStoreAccountImporter.importAccount(from: data, filePassword: importPassword)
+            let imported: SideStoreAccount
+            imported = try SideStoreAccountImporter.importAccount(from: data, filePassword: importPassword)
             pendingImportedAccount = imported
         } catch {
             errorInfo = error.localizedDescription
@@ -674,4 +675,3 @@ struct SettingsView: View {
         }
     }
 }
-  
