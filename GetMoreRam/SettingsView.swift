@@ -25,6 +25,9 @@ struct SettingsView: View {
     @State private var importResultInfo = ""
     @State private var isImportingSideStoreAccount = false
     @State private var showSideStoreImporter = false
+    @State private var showImportPasswordPrompt = false
+    @State private var importPassword = ""
+    @State private var pendingImportedAccount: SideStoreAccount?
     @State private var showAppNameEditor = false
     @State private var showAppIconEditor = false
     @State private var newAppName = ""
@@ -157,6 +160,39 @@ struct SettingsView: View {
         }
         .fileImporter(isPresented: $showSideStoreImporter, allowedContentTypes: [UTType(filenameExtension: "sideconf") ?? .json, .json], allowsMultipleSelection: false) { result in
             handleSideStoreImport(result)
+        }
+        .sheet(isPresented: $showImportPasswordPrompt) {
+            NavigationStack {
+                Form {
+                    Section {
+                        SecureField("Mot de passe", text: $importPassword)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    } header: {
+                        Text("Vérification du fichier")
+                    } footer: {
+                        Text("Entre le mot de passe utilisé lors de la création de ce fichier SideStore. Le mot de passe n'est pas enregistré par GetMoreRam.")
+                    }
+                    Section {
+                        Button("Importer le compte") {
+                            completeSideStoreImport()
+                        }
+                        .disabled(importPassword.isEmpty)
+                    }
+                }
+                .navigationTitle("Mot de passe requis")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Annuler") {
+                            importPassword = ""
+                            pendingImportedAccount = nil
+                            showImportPasswordPrompt = false
+                        }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
         }
         .onAppear {
             if sharedModel.isLogin {
@@ -514,44 +550,60 @@ struct SettingsView: View {
             errorShow = true
         case .success(let urls):
             guard let url = urls.first else {
-                errorInfo = "No SideStore account file was selected."
+                errorInfo = "Aucun fichier SideStore sélectionné."
                 errorShow = true
                 return
             }
-
             let accessed = url.startAccessingSecurityScopedResource()
             defer { if accessed { url.stopAccessingSecurityScopedResource() } }
-
             do {
                 let imported = try SideStoreAccountImporter.importAccount(from: Data(contentsOf: url))
-                email = imported.email
-                sharedModel.session = nil
-                sharedModel.account = nil
-                sharedModel.team = nil
-                sharedModel.selectedTeamIdentifier = ""
-                sharedModel.isLogin = false
-                viewModel.availableTeams = []
-                viewModel.teamSelectionShow = false
+                pendingImportedAccount = imported
+                importPassword = ""
+                showImportPasswordPrompt = true
+            } catch {
+                errorInfo = error.localizedDescription
+                errorShow = true
+            }
+        }
+    }
 
-                Task { @MainActor in
-                    do {
-                        try await sharedModel.restoreSession()
-                        if sharedModel.isLogin {
-                            importResultInfo = "Successfully imported and restored: \(imported.email)"
-                            importResultShow = true
-                            email = imported.email
-                            teamId = sharedModel.team?.identifier ?? ""
-                        } else {
-                            importResultInfo = "Account imported. Sign in again if Apple requires verification."
-                            importResultShow = true
-                        }
-                    } catch {
-                        errorInfo = "Account imported, but the session could not be restored. Please sign in again if Apple requests verification.\n\n\(error.detailedDescription)"
-                        errorShow = true
-                    }
+    private func completeSideStoreImport() {
+        guard let imported = pendingImportedAccount else {
+            errorInfo = "Aucun compte SideStore à importer."
+            errorShow = true
+            return
+        }
+        guard importPassword == imported.password else {
+            errorInfo = "Le mot de passe ne correspond pas à celui utilisé pour créer ce fichier SideStore."
+            errorShow = true
+            return
+        }
+        showImportPasswordPrompt = false
+        importPassword = ""
+        pendingImportedAccount = nil
+        email = imported.email
+        sharedModel.session = nil
+        sharedModel.account = nil
+        sharedModel.team = nil
+        sharedModel.selectedTeamIdentifier = ""
+        sharedModel.isLogin = false
+        viewModel.availableTeams = []
+        viewModel.teamSelectionShow = false
+        Task { @MainActor in
+            do {
+                try await sharedModel.restoreSession()
+                if sharedModel.isLogin {
+                    importResultInfo = "Successfully imported and restored: \(imported.email)"
+                    importResultShow = true
+                    email = imported.email
+                    teamId = sharedModel.team?.identifier ?? ""
+                } else {
+                    importResultInfo = "Account imported. Sign in again if Apple requires verification."
+                    importResultShow = true
                 }
             } catch {
-                errorInfo = error.detailedDescription
+                errorInfo = "Account imported, but the session could not be restored. Please sign in again if Apple requests verification.\n\n\(error.localizedDescription)"
                 errorShow = true
             }
         }
