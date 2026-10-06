@@ -13,7 +13,7 @@ on:
 jobs:
   build:
     name: Build using xcodebuild command
-    runs-on: macos-latest
+    runs-on: macos-14
     env:
       scheme: GetMoreRam
       archive_path: archive
@@ -57,7 +57,17 @@ jobs:
           scheme: ${{ steps.scheme.outputs.scheme }}
           filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
           file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
-        run: xcodebuild clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty && exit ${PIPESTATUS[0]}
+        run: set -o pipefail
+rm -rf "$RUNNER_TEMP/DerivedData" "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Developer/Xcode/ModuleCache.noindex"
+for attempt in 1 2; do
+  echo "Xcode build attempt $attempt"
+  if xcodebuild clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release -derivedDataPath "$RUNNER_TEMP/DerivedData" -parallelizeTargets NO -jobs 1 CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO COMPILER_INDEX_STORE_ENABLE=NO SWIFT_INDEX_STORE_ENABLE=NO | xcpretty; then
+    exit 0
+  fi
+  rm -rf "$RUNNER_TEMP/DerivedData" "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Developer/Xcode/ModuleCache.noindex"
+  sleep 3
+done
+exit 65
       - name: Analyze
         env:
           scheme: ${{ steps.scheme.outputs.scheme }}
