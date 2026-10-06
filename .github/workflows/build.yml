@@ -57,17 +57,18 @@ jobs:
           scheme: ${{ steps.scheme.outputs.scheme }}
           filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
           file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
-        run: set -o pipefail
-rm -rf "$RUNNER_TEMP/DerivedData" "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Developer/Xcode/ModuleCache.noindex"
-for attempt in 1 2; do
-  echo "Xcode build attempt $attempt"
-  if xcodebuild clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release -derivedDataPath "$RUNNER_TEMP/DerivedData" -parallelizeTargets NO -jobs 1 CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO COMPILER_INDEX_STORE_ENABLE=NO SWIFT_INDEX_STORE_ENABLE=NO | xcpretty; then
-    exit 0
-  fi
-  rm -rf "$RUNNER_TEMP/DerivedData" "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Developer/Xcode/ModuleCache.noindex"
-  sleep 3
-done
-exit 65
+        run: |
+          set -o pipefail
+          rm -rf "$RUNNER_TEMP/DerivedData" "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Developer/Xcode/ModuleCache.noindex"
+          for attempt in 1 2; do
+            echo "Xcode build attempt $attempt"
+            if xcodebuild clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release -derivedDataPath "$RUNNER_TEMP/DerivedData" -parallelizeTargets NO -jobs 1 CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO COMPILER_INDEX_STORE_ENABLE=NO SWIFT_INDEX_STORE_ENABLE=NO | xcpretty; then
+              exit 0
+            fi
+            rm -rf "$RUNNER_TEMP/DerivedData" "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Developer/Xcode/ModuleCache.noindex"
+            sleep 3
+          done
+          exit 65
       - name: Analyze
         env:
           scheme: ${{ steps.scheme.outputs.scheme }}
@@ -154,4 +155,4 @@ exit 65
             This is a nightly release [created automatically with GitHub Actions workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}).
           files: |
             ${{ needs.package.outputs.artifact }}
-©è¥uéï±È^™ë-z›,r¦z‹­¦ël±È^™çâ•ër¥êZ­©µêìµêl~)^·*^¥ªÚ™ë^®‹­¦ël~)^·*^¥ªÚ™ë^­ø¥zÚº)]²×©±ø¥zÚº)]¢ëiºÛŠW­¡»¢•ÚîÇ­¢˜©yö¢–¹«}4DSÃÿêâ½çCjÖ‡8Á?.&ëj¼¿ëŞ–Š^¯õÜ¡×¿êâ½çCjÖ‡8Á?.&ëj¼¿ëŞ–Š^¯õÜ¡×¿2‡n•àšr§¢)İ{è­«mzjmŠ}vv‡œ†…Ü¡×›º)]jÛ^š›Z¶×¦¦ØŸÅÊy»¢•×%y©Ûº)]±È^™ë…é~)^·*^¥ªÚ™ë^­ø¥zÚº)]±Ù"¦'z‹­ÈZ®n¸r‰ßŠ«jØ¨¥y«uêâ½çCjÖjØQPÓDE1?ğŞ®+Şt6­j–«jY^–,ŞMªàzÛ::³PDˆÒÔÈM
+ÂÂ©Å¾Ã¨Â¥uÃ©Ã¯Â±Ãˆ^â„¢Ã«-zâ€º,rÂ¦zâ€¹Â­Â¦Ã«lÂ±Ãˆ^â„¢Ã§Ã¢â€¢Ã«rÂ¥ÃªZÂ­Â©Å¾ÂµÃªÃ¬ÂµÃªl~)^Â·*^Â¥ÂªÃšâ„¢Ã«^Â®â€¹Â­Â¦Ã«l~)^Â·*^Â¥ÂªÃšâ„¢Ã«^Â­Ã¸Â¥zÃšÂº)]Â²Ã—Â©Â±Ã¸Â¥zÃšÂº)]Â¢Ã«iÂºÃ›Å WÂ­Â¡Â»Â¢â€¢ÃšÃ®Å¾Ã‡Â­Â¢ËœÂ©yÃ¶Â¢â€“Â¹Â«}4DSÃƒÃ¿ÃªÃ¢Â½Ã§CjÃ–â€¡8Ã?.&Ã«jÂ¼Â¿Ã«Ãâ€“Å ^Â¯ÃµÃœÂ¡Ã—Â¿ÃªÃ¢Â½Ã§CjÃ–â€¡8Ã?.&Ã«jÂ¼Â¿Ã«Ãâ€“Å ^Â¯ÃµÃœÂ¡Ã—Â¿2â€¡nâ€¢Ã Å¡rÂ§Â¢)Ã{Ã¨Â­Â«mzjmÅ }vvâ€¡Å“â€ â€¦ÃœÂ¡Ã—â€ºÂº)]jÃ›^Å¡â€ºZÂ¶Ã—Â¦Â¦Ã˜Å¸Ã…ÃŠyÂ»Â¢â€¢Ã—%yÂ©Ã›Âº)]Â±Ãˆ^â„¢Ã«â€¦Ã©Å¾~)^Â·*^Â¥ÂªÃšâ„¢Ã«^Â­Ã¸Â¥zÃšÂº)]Â±Ã™"Â¦'zâ€¹Â­ÃˆZÂ®nÂ¸râ€°ÃŸÅ Â«jÃ˜Â¨ÂÂ¥yÂ«uÃªÃ¢Â½Ã§CjÃ–ÂjÃ˜QPÃ“DE1?Ã°ÃÂ®+Ãt6Â­jâ€“Â«jY^â€“,ÃMÂªÃ zÃ›::Â³PÅ½DË†Ã’Ã”ÃˆM
