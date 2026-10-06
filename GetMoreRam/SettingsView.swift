@@ -339,7 +339,7 @@ struct SettingsView: View {
                 }
                 if let pendingAppIcon {
                     Section {
-                        pendingAppIcon.resizable().scaledToFit().frame(height: 150)
+                        Image(uiImage: pendingAppIcon).resizable().scaledToFit().frame(height: 150)
                     } header: { Text("Preview") }
                 } else if !newAppIconURL.isEmpty {
                     Section {
