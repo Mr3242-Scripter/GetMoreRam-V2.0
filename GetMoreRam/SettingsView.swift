@@ -585,7 +585,10 @@ struct SettingsView: View {
             imported = try SideStoreAccountImporter.importAccount(from: data, filePassword: importPassword)
             pendingImportedAccount = imported
         } catch {
-            errorInfo = error.localizedDescription
+            // Keep the encrypted file pending so the user can retry with another key.
+            // The decryption password is never persisted.
+            importPassword = ""
+            errorInfo = "La clé de déchiffrement est incorrecte ou le fichier SideStore ne peut pas être déchiffré. Réessayez avec la clé d’exportation SideStore."
             errorShow = true
             return
         }
