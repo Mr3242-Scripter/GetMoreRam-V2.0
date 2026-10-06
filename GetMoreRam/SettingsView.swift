@@ -165,8 +165,6 @@ struct SettingsView: View {
         ) { result in
             handleSideStoreImport(result)
         }
-        .fileDialogBrowserOptions(.displayFileExtensions)
-        .fileDialogMessage("Sélectionnez un fichier .sideconf")
         .sheet(isPresented: $showImportPasswordPrompt) {
             NavigationStack {
                 Form {
