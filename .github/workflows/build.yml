@@ -1,10 +1,10 @@
 name: Xcode - Build
 
-on:
+on: 
   push:
   pull_request:
   workflow_dispatch:
-    inputs:
+    inputs: 
       release__nightly:
         description: Create a nightly release
         type: boolean
@@ -32,41 +32,44 @@ jobs:
       - name: Set Scheme
         id: scheme
         run: |
-          if [ "$scheme" = default ]; then
+          if [ $scheme = default ]
+          then
             scheme_list=$(xcodebuild -list -json | tr -d "\n")
             scheme=$(echo $scheme_list | ruby -e "require 'json'; puts JSON.parse(STDIN.gets)['project']['targets'][0]")
+            echo Using default scheme: $scheme
+          else
+            echo Using configured scheme: $scheme
           fi
-          echo "Using scheme: $scheme"
           echo "scheme=$scheme" >> $GITHUB_OUTPUT
       - name: Set filetype_parameter
         id: filetype_parameter
         run: |
-          filetype_parameter=`ls -A | grep -i "\\.xcworkspace\$" && echo workspace || echo project`
+          filetype_parameter=`ls -A | grep -i \\.xcworkspace\$ && echo workspace || echo project`
           echo "filetype_parameter=$filetype_parameter" >> $GITHUB_OUTPUT
       - name: Set file_to_build
         id: file_to_build
         run: |
-          file_to_build=`ls -A | grep -i "\\.xcworkspace\$" || ls -A | grep -i "\\.xcodeproj\$"`
-          file_to_build=`echo $file_to_build | awk '{print $1}'`
+          file_to_build=`ls -A | grep -i \\.xcworkspace\$ || ls -A | grep -i \\.xcodeproj\$`
+          file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
           echo "file_to_build=$file_to_build" >> $GITHUB_OUTPUT
       - name: Build
         env:
           scheme: ${{ steps.scheme.outputs.scheme }}
           filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
           file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
-        run: xcodebuild -jobs 1 clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty && exit ${PIPESTATUS[0]}
+        run: xcodebuild clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty && exit ${PIPESTATUS[0]}
       - name: Analyze
         env:
           scheme: ${{ steps.scheme.outputs.scheme }}
           filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
           file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
-        run: xcodebuild -jobs 1 analyze -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty && exit ${PIPESTATUS[0]}
+        run: xcodebuild analyze -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty && exit ${PIPESTATUS[0]}
       - name: Archive
         env:
           scheme: ${{ steps.scheme.outputs.scheme }}
           filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
           file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
-        run: xcodebuild -jobs 1 archive -archivePath "$archive_path" -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty && exit ${PIPESTATUS[0]}
+        run: xcodebuild archive -archivePath "$archive_path" -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty && exit ${PIPESTATUS[0]}
       - name: Tar Build Artifact
         run: tar -cvf "$archive_path.xcarchive.tar" "$archive_path.xcarchive"
       - name: Upload a Build Artifact
@@ -84,13 +87,14 @@ jobs:
       archive_path: ${{ needs.build.outputs.archive_path }}
     outputs:
       artifact: ${{ env.scheme }}.ipa
+
     steps:
       - name: Download a Build Artifact
         uses: actions/download-artifact@v4
         with:
           name: ${{ env.archive_path }}.xcarchive.tar
       - name: Extract Build Artifact
-        run: tar -xf "${archive_path}.xcarchive.tar"
+        run: tar -xf "$archive_path.xcarchive.tar"
       - name: Install ldid
         run: |
           if [ `uname -s` = "Linux" ]; then
@@ -103,12 +107,12 @@ jobs:
           fi
       - name: Fakesign
         run: |
-          find "${archive_path}.xcarchive/Products/Applications/${scheme}.app" -type d -path '*/Frameworks/*.framework' -exec ldid -S {} \;
-          ldid -S "${archive_path}.xcarchive/Products/Applications/${scheme}.app"
+          find "$archive_path.xcarchive/Products/Applications/$scheme.app" -type d -path '*/Frameworks/*.framework' -exec ldid -S \{\} \;
+          ldid -S "$archive_path.xcarchive/Products/Applications/$scheme.app"
       - name: Create IPA
         run: |
-          mv "${archive_path}.xcarchive/Products/Applications" Payload
-          zip -r "${scheme}.ipa" Payload -x "._*" -x ".DS_Store" -x "__MACOSX"
+          mv "$archive_path.xcarchive/Products/Applications" Payload
+          zip -r "$scheme.ipa" "Payload" -x "._*" -x ".DS_Store" -x "__MACOSX"
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -117,29 +121,26 @@ jobs:
 
   release__nightly:
     name: Nightly Release
-    if: inputs.release__nightly == true || github.event_name == 'push'
-    runs-on: ubuntu-latest
-    needs: [package]
     permissions:
       contents: write
+    if: inputs.release__nightly || github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    needs: [package]
     concurrency:
       group: release__nightly
-      cancel-in-progress: false
+      cancel-in-progress: true
+
     steps:
       - name: Download a Build Artifact
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.package.outputs.artifact }}
-      - name: Update Nightly Release
-        uses: andelf/nightly-release@main
+      - name: Nightly Release
+        uses: andelf/nightly-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: nightly
-          name: 'Nightly Release @ $$'
-          prerelease: true
-          only-when-changed: false
+        with: 
           body: |
-            Automated nightly release from commit ${{ github.sha }}.
+            This is a nightly release [created automatically with GitHub Actions workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}).
           files: |
             ${{ needs.package.outputs.artifact }}
