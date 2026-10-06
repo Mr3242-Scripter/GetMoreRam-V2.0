@@ -13,7 +13,7 @@ on:
 jobs:
   build:
     name: Build using xcodebuild command
-    runs-on: macos-14
+    runs-on: macos-latest
     env:
       scheme: GetMoreRam
       archive_path: archive
@@ -57,18 +57,7 @@ jobs:
           scheme: ${{ steps.scheme.outputs.scheme }}
           filetype_parameter: ${{ steps.filetype_parameter.outputs.filetype_parameter }}
           file_to_build: ${{ steps.file_to_build.outputs.file_to_build }}
-        run: |
-          set -o pipefail
-          rm -rf "$RUNNER_TEMP/DerivedData" "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Developer/Xcode/ModuleCache.noindex"
-          for attempt in 1 2; do
-            echo "Xcode build attempt $attempt"
-            if xcodebuild clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release -derivedDataPath "$RUNNER_TEMP/DerivedData" -parallelizeTargets NO -jobs 1 CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO COMPILER_INDEX_STORE_ENABLE=NO SWIFT_INDEX_STORE_ENABLE=NO | xcpretty; then
-              exit 0
-            fi
-            rm -rf "$RUNNER_TEMP/DerivedData" "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Developer/Xcode/ModuleCache.noindex"
-            sleep 3
-          done
-          exit 65
+        run: xcodebuild clean build -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -sdk iphoneos -arch arm64 -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO | xcpretty && exit ${PIPESTATUS[0]}
       - name: Analyze
         env:
           scheme: ${{ steps.scheme.outputs.scheme }}
@@ -155,4 +144,3 @@ jobs:
             This is a nightly release [created automatically with GitHub Actions workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}).
           files: |
             ${{ needs.package.outputs.artifact }}
-©žè¥uéï±È^™ë-z›,r¦z‹­¦ël±È^™çâ•ër¥êZ­©žµêìµêl~)^·*^¥ªÚ™ë^®‹­¦ël~)^·*^¥ªÚ™ë^­ø¥zÚº)]²×©±ø¥zÚº)]¢ëiºÛŠW­¡»¢•ÚîžÇ­¢˜©yö¢–¹«}4DSÃÿêâ½çCjÖ‡8Á?.&ëj¼¿ëÞ–Š^¯õÜ¡×¿êâ½çCjÖ‡8Á?.&ëj¼¿ëÞ–Š^¯õÜ¡×¿2‡n•àšr§¢)Ý{è­«mzjmŠ}vv‡œ†…Ü¡×›º)]jÛ^š›Z¶×¦¦ØŸÅÊy»¢•×%y©Ûº)]±È^™ë…éž~)^·*^¥ªÚ™ë^­ø¥zÚº)]±Ù"¦'z‹­ÈZ®n¸r‰ßŠ«jØ¨¥y«uêâ½çCjÖjØQPÓDE1?ðÞ®+Þt6­j–«jY^–,ÞMªàzÛ::³PŽDˆÒÔÈM
