@@ -161,10 +161,11 @@ struct SettingsView: View {
         }
         .fileImporter(
             isPresented: $showSideStoreImporter,
-            allowedContentTypes: [UTType(filenameExtension: "sideconf")!]
+            allowedContentTypes: [UTType(importedAs: "com.sidestore.sideconf", conformingTo: .data)]
         ) { result in
             handleSideStoreImport(result)
         }
+        .fileDialogConfirmationLabel("Open")
         .sheet(isPresented: $showImportPasswordPrompt) {
             NavigationStack {
                 Form {
