@@ -24,6 +24,7 @@ struct SettingsView: View {
     @State private var importResultShow = false
     @State private var importResultInfo = ""
     @State private var isImportingSideStoreAccount = false
+    @State private var isExportingSideStoreCertificate = false
     @State private var showSideStoreImporter = false
     @State private var showImportPasswordPrompt = false
     @State private var importPassword = ""
@@ -57,6 +58,11 @@ struct SettingsView: View {
                     Button("Sign in") {
                         viewModel.loginModalShow = true
                     }
+
+                    Button("Import Certificate from SideStore") {
+                        importCertificateFromSideStore()
+                    }
+                    .disabled(isExportingSideStoreCertificate)
 
                     Button("Import SideStore account (.sideconf)") {
                         importFromSideStore()
@@ -198,6 +204,9 @@ struct SettingsView: View {
                 }
             }
             .presentationDetents([.medium])
+        }
+        .onOpenURL { url in
+            handleSideStoreCertificateCallback(url)
         }
         .onAppear {
             if sharedModel.isLogin {
@@ -542,6 +551,39 @@ struct SettingsView: View {
 
         email = ""
         teamId = ""
+    }
+
+    private func importCertificateFromSideStore() {
+        guard #available(iOS 15.0, *) else { return }
+        isExportingSideStoreCertificate = true
+        Task { @MainActor in
+            let opened = await SideStoreSupport.importCertificate()
+            if !opened {
+                errorInfo = "SideStore 0.6.2 ou supérieur n'est pas disponible. Ouvrez SideStore puis réessayez."
+                errorShow = true
+            }
+            isExportingSideStoreCertificate = false
+        }
+    }
+
+    private func handleSideStoreCertificateCallback(_ url: URL) {
+        guard url.scheme?.lowercased() == "getmoreram",
+              url.host?.lowercased() == "certificate" else { return }
+
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        let items = components?.queryItems ?? []
+        guard let encodedCertificate = items.first(where: { $0.name == "cert" })?.value,
+              let certificateData = Data(base64Encoded: encodedCertificate) else {
+            errorInfo = "SideStore est revenu sans certificat exploitable."
+            errorShow = true
+            return
+        }
+
+        let password = items.first(where: { $0.name == "password" })?.value ?? ""
+        SideStoreCertificateStore.save(certificate: certificateData, password: password)
+        isExportingSideStoreCertificate = false
+        importResultInfo = "Certificat SideStore importé avec succès. Le certificat est maintenant disponible pour GetMoreRam."
+        importResultShow = true
     }
 
     func importFromSideStore() {
