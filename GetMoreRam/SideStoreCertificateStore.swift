@@ -31,6 +31,7 @@ enum SideStoreCertificateStore {
             kSecAttrAccount as String: key
         ]
         SecItemDelete(query as CFDictionary)
+
         var item = query
         item[kSecValueData as String] = data
         SecItemAdd(item as CFDictionary, nil)
@@ -40,7 +41,7 @@ enum SideStoreCertificateStore {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
-            KSecReturnData as String: true
+            kSecreturnData as String: true
         ]
         var result: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else {
