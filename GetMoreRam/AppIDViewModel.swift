@@ -23,12 +23,23 @@ class AppIDModel : ObservableObject, Hashable {
     }
 
     func addIncreasedMemory() async throws {
-        guard let team = DataManager.shared.model.team, let session = DataManager.shared.model.session else {
+        try await DataManager.shared.model.restoreSession()
+
+        guard let team = DataManager.shared.model.team,
+              let session = DataManager.shared.model.session else {
             throw "Please Login First"
         }
 
-        let cool = try await AppleAPI.shared.updateAppID(appID, capabilities: ["INCREASED_MEMORY_LIMIT"], team: team, session: session)
-        result = "\(cool)"
+        let updated = try await AppleAPI.shared.updateAppID(
+            appID,
+            capabilities: ["INCREASED_MEMORY_LIMIT"],
+            team: team,
+            session: session
+        )
+
+        appID = updated
+        bundleID = updated.bundleIdentifier
+        result = "\(updated)"
     }
 }
 
@@ -36,7 +47,10 @@ class AppIDViewModel : ObservableObject {
     @Published var appIDs: [AppIDModel] = []
 
     func fetchAppIDs() async throws {
-        guard let team = DataManager.shared.model.team, let session = DataManager.shared.model.session else {
+        try await DataManager.shared.model.restoreSession()
+
+        guard let team = DataManager.shared.model.team,
+              let session = DataManager.shared.model.session else {
             throw "Please Login First"
         }
 
@@ -53,9 +67,13 @@ class AppIDViewModel : ObservableObject {
     /// App ID returned by Apple. If a SideStore certificate was imported, make it
     /// available to the signing keychain before starting the operation.
     func refreshAndUnlockAll() async throws {
+        try await DataManager.shared.model.restoreSession()
         SideStoreCertificateStore.synchronizeImportedCertificate()
+
         try await fetchAppIDs()
         try await addIncreasedMemoryLimitToAll()
+
+        try await fetchAppIDs()
     }
 
     func addIncreasedMemoryLimitToAll() async throws {
