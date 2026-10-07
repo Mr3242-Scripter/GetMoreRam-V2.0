@@ -17,16 +17,20 @@ public final class SideStoreClient: NSObject {
         // LiveContainer can install/re-sign the same app under a different
         // effective identifier. The parent directory of the running guest
         // bundle is the identifier LiveContainer itself uses for lookup.
-        let containerFolderName = Bundle.main.bundleURL
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .lastPathComponent ?? ""
+        // LiveContainer stores the guest's container UUID in the guest HOME path.
+        // Its launch extension accepts this as container-folder-name and uses
+        // bundle-name only to identify the app inside that container.
+        let guestBundleID = Bundle.main.bundleIdentifier ?? ""
+        let containerFolderName = URL(fileURLWithPath: NSHomeDirectory()).lastPathComponent
 
         let liveContainerCallback: String
-        if !containerFolderName.isEmpty {
+        if !guestBundleID.isEmpty && !containerFolderName.isEmpty {
+            let encodedBundleID = guestBundleID.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? guestBundleID
+            let encodedContainer = containerFolderName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? containerFolderName
             liveContainerCallback =
                 "livecontainer://livecontainer-launch" +
-                "?container-folder-name=\(containerFolderName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? containerFolderName)" +
+                "?bundle-name=\\(encodedBundleID)" +
+                "&container-folder-name=\\(encodedContainer)" +
                 "&urlscheme=getmoreram%3A%2F%2Fcertificate%3Fcert%3D$(BASE64_CERT)%26password%3D$(PASSWORD)"
         } else {
             liveContainerCallback = directCallback
