@@ -5,6 +5,10 @@ struct AppIDEditView: View {
     @State private var errorShow = false
     @State private var errorInfo = ""
 
+    init(viewModel: AppIDModel) {
+        _viewModel = StateObject(wrappedValue: viewModel)
+    }
+
     var body: some View {
         Form {
             Section {
