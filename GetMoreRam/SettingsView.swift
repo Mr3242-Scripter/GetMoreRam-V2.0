@@ -650,13 +650,38 @@ struct SettingsView: View {
         Task { @MainActor in
             do {
                 try await sharedModel.restoreSession()
+
                 if sharedModel.isLogin {
                     importResultInfo = "Successfully imported and restored: \(imported.email)"
                     importResultShow = true
                     email = imported.email
                     teamId = sharedModel.team?.identifier ?? ""
-                } else {
+                    return
+                }
+
+                // A SideStore account export does not necessarily contain the
+                // currently selected Apple Developer team. Restore the account
+                // session first, then expose the same team picker used by Sign In.
+                guard let account = sharedModel.account,
+                      let session = sharedModel.session else {
                     importResultInfo = "Account imported. Sign in again if Apple requires verification."
+                    importResultShow = true
+                    return
+                }
+
+                let teams = try await viewModel.fetchTeams(for: account, session: session)
+                viewModel.availableTeams = teams
+
+                if teams.count == 1, let team = teams.first {
+                    selectTeam(team)
+                    importResultInfo = "Successfully imported and restored: \(imported.email)"
+                    importResultShow = true
+                } else if !teams.isEmpty {
+                    importResultInfo = "Account imported. Choose the Apple Developer team to use."
+                    importResultShow = true
+                    viewModel.teamSelectionShow = true
+                } else {
+                    importResultInfo = "Account imported, but no Apple Developer teams were found."
                     importResultShow = true
                 }
             } catch {
