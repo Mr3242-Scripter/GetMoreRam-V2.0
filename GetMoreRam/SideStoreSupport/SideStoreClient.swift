@@ -29,8 +29,8 @@ public final class SideStoreClient: NSObject {
             let encodedContainer = containerFolderName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? containerFolderName
             liveContainerCallback =
                 "livecontainer://livecontainer-launch" +
-                "?bundle-name=\\(encodedBundleID)" +
-                "&container-folder-name=\\(encodedContainer)" +
+                "?bundle-name=\(encodedBundleID)" +
+                "&container-folder-name=\(encodedContainer)" +
                 "&urlscheme=getmoreram%3A%2F%2Fcertificate%3Fcert%3D$(BASE64_CERT)%26password%3D$(PASSWORD)"
         } else {
             liveContainerCallback = directCallback
