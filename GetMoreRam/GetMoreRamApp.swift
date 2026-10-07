@@ -1,8 +1,3 @@
-//
-//  GetMoreRamApp.swift
-//  GetMoreRam
-//
-
 import SwiftUI
 
 @main
@@ -24,7 +19,6 @@ final class AppDelegate: NSObject, ObservableObject {
     func performStartupTasks() {
         guard !hasStarted else { return }
         hasStarted = true
-
         Task {
             let sharedModel = DataManager.shared.model
             do {
@@ -33,7 +27,7 @@ final class AppDelegate: NSObject, ObservableObject {
                     await autoFireOnStartup()
                 }
             } catch {
-                print("Startup restore error: \(error.detailedDescription)")
+                print("Startup restore error: \(error.localizedDescription)")
             }
         }
     }
@@ -42,9 +36,9 @@ final class AppDelegate: NSObject, ObservableObject {
         let viewModel = AppIDViewModel()
         do {
             try await viewModel.fetchAppIDs()
-            try await viewModel.addIncreasedMemoryLimitToAll()
+            try await viewModel.refreshAndUnlockAll()
         } catch {
-            print("Auto-fire error: \(error.detailedDescription)")
+            print("Auto-fire error: \(error.localizedDescription)")
         }
     }
 }
