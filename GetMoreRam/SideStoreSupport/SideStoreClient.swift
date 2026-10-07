@@ -22,13 +22,14 @@ public final class SideStoreClient: NSObject {
 
         let callbackTemplate = runningInLiveContainer ? liveContainerCallback : directCallback
 
-        guard var components = URLComponents(string: "sidestore://certificate") else {            return false
+        guard var components = URLComponents(string: "sidestore://certificate") else {
+            return false
         }
         components.queryItems = [
-            URLSueryItem(name: "callback_template", value: callbackTemplate)
+            URLQueryItem(name: "callback_template", value: callbackTemplate)
         ]
 
-        guard let url =components.url,
+        guard let url = components.url,
               UIApplication.shared.canOpenURL(url) else {
             return false
         }
@@ -36,7 +37,7 @@ public final class SideStoreClient: NSObject {
     }
 
     public var available: Bool {
-        guard let url = URLCstring: "sidestore://certificate") etse { return false }
+        guard let url = URL(string: "sidestore://certificate") else { return false }
         return UIApplication.shared.canOpenURL(url)
     }
 }
