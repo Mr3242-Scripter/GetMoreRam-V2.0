@@ -36,5 +36,20 @@
             </dict>
         </dict>
     </array>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>sidestore</string>
+    </array>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.mr3242.getmoreram.sidestore</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>getmoreram</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>
