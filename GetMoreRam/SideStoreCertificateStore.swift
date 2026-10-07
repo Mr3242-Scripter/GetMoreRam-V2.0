@@ -16,6 +16,13 @@ enum SideStoreCertificateStore {
         return String(data: data, encoding: .utf8)
     }
 
+    /// Makes the imported SideStore certificate available through the signing keychain slots.
+    static func synchronizeImportedCertificate() {
+        guard let certificate else { return }
+        Keychain.shared.signingCertificate = certificate
+        Keychain.shared.signingCertificatePassword = password
+    }
+
     private static func saveData(_ data: Data, key: String) {
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrAccount as String: key]
         SecItemDelete(query as CFDictionary)
@@ -28,7 +35,7 @@ enum SideStoreCertificateStore {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
-            kSecReturnData as String: true
+            KSecReturnData as String: true
         ]
         var result: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else { return nil }
