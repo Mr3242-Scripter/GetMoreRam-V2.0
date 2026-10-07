@@ -66,17 +66,16 @@ class AppIDViewModel : ObservableObject {
     /// Refresh the App ID list and enable the increased-memory capability for every
     /// App ID returned by Apple. If a SideStore certificate was imported, make it
     /// available to the signing keychain before starting the operation.
+    /// Refresh the current Apple session and unlock the increased-memory
+    /// capability for every App ID returned by the selected team.
+    ///
+    /// A certificate imported from SideStore is synchronized first so the
+    /// same signing credentials are available to the signing stack. Normal
+    /// Sign In and .sideconf-imported accounts both restore through the same
+    /// SharedModel session path.
     func refreshAndUnlockAll() async throws {
-        // Restore the same credentials used by normal Sign In and by the
-        // imported SideStore account before touching App IDs.
         SideStoreCertificateStore.synchronizeImportedCertificate()
         try await DataManager.shared.model.restoreSession()
-
-        guard DataManager.shared.model.isLogin,
-              DataManager.shared.model.team != nil,
-              DataManager.shared.model.session != nil else {
-            throw "Please Sign In or import a SideStore account first."
-        }
 
         try await fetchAppIDs()
         try await addIncreasedMemoryLimitToAll()
