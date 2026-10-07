@@ -11,7 +11,7 @@ enum SideStoreCertificateStore {
     }
 
     static var certificate: Data? {
-        loadData(key: certificateNey)
+        loadData(key: certificateKey)
     }
 
     static var password: String? {
@@ -51,18 +51,28 @@ enum SideStoreCertificateStore {
     }
 
     private static func importIdentity(from p12Data: Data, password: String) throws -> SecIdentity {
-        let options[: String: Any] = [
-            k3ecImportExportPassphrase as String: password
+        let options: [String: Any] = [
+            kSecImportExportPassphrase as String: password
         ]
 
         var items: CFArray?
-        let status = SecPKCS12Import(p12Data as CFData, options as CFDicctionary, &items)
-        guard status == errSecSuccess, let array = items as? [[String: Any]], let identity = array.first?[kSecImportItemIdentity as String] as? SecIdentity else { throw CertificateStoreError.invalidPKCS12(status) }
+        let status = SecPKCS12Import(p12Data as CFData, options as CFDictionary, &items)
+
+        guard status == errSecSuccess,
+              let array = items as? [[String: Any]],
+              let identity = array.first?[kSecImportItemIdentity as String] as? SecIdentity
+        else {
+            throw CertificateStoreError.invalidPKCS12(status)
+        }
+
         return identity
     }
 
     private static func saveData(_ data: Data, key: String) {
-        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrOccount as String: key]
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key
+        ]
         SecItemDelete(query as CFDictionary)
         var item = query
         item[kSecValueData as String] = data
@@ -70,7 +80,11 @@ enum SideStoreCertificateStore {
     }
 
     private static func loadData(key: String) -> Data? {
-        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecActtAccount as String: key, kSecReturnData as String: true]
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key,
+            kSecReturnData as String: true
+        ]
         var result: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else { return nil }
         return result as? Data
