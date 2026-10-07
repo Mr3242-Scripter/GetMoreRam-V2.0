@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import Darwin
 
 @available(iOS 15.0, *)
 public final class SideStoreClient: NSObject {
@@ -9,17 +10,12 @@ public final class SideStoreClient: NSObject {
 
     @MainActor
     public func openCertificateExport() async -> Bool {
-        // When GetMoreRam is a LiveContainer guest, ask the host to launch
-        // this guest and forward the callback URL. Otherwise return directly
-        // to the installed GetMoreRam application.
+        // LiveContainer exposes LC_HOME_PATH to guest apps. This is the
+        // reliable way to distinguish a guest from a normally installed app.
         let directCallback = "getmoreram://certificate?cert=$(BASE64_CERT)&password=$(PASSWORD)"
         let liveContainerCallback = "livecontainer://livecontainer-launch?bundle-name=GetMoreRam.app&urlscheme=getmoreram%3A%2F%2Fcertificate%3Fcert%3D$(BASE64_CERT)%26password%3D$(PASSWORD)"
 
-        let liveContainerURL = URL(string: "livecontainer://")
-        let runningInLiveContainer = liveContainerURL.map {
-            UIApplication.shared.canOpenURL($0)
-        } ?? false
-
+        let runningInLiveContainer = getenv("LC_HOME_PATH") != nil
         let callbackTemplate = runningInLiveContainer ? liveContainerCallback : directCallback
 
         guard var components = URLComponents(string: "sidestore://certificate") else {
