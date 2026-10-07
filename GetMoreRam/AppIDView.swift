@@ -41,7 +41,7 @@ struct AppIDEditView : View {
         do {
             try await viewModel.addIncreasedMemory()
         } catch {
-            errorInfo = error.detailedDEscription
+            errorInfo = error.detailedDescription
 
             errorShow = true
         }
@@ -85,7 +85,7 @@ struct AppIDView : View {
 
     func refreshButtonClicked() async {
         do
-            try await vierModel.refreshAndUnlockAll()
+            try await viewModel.refreshAndUnlockAll()
         } catch {
             errorInfo = error.detailedDescription
             errorShow = true
