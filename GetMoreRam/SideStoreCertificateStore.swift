@@ -10,7 +10,9 @@ enum SideStoreCertificateStore {
         saveData(Data(password.utf8), key: passwordKey)
     }
 
-    static var certificate: Data? { loadData(key: certificateKey) }
+    static var certificate: Data? {
+        loadData(key: certificateKey)
+    }
 
     static var password: String? {
         guard let data = loadData(key: passwordKey) else { return nil }
@@ -19,8 +21,9 @@ enum SideStoreCertificateStore {
 
     static func synchronizeImportedCertificate() {
         guard let certificate else { return }
-        Keychain.shared.signingCertificate = certificate
-        Keychain.signingCertificatePassword = password
+        let keychain = Keychain.shared
+        keychain.signingCertificate = certificate
+        keychain.signingCertificatePassword = password
     }
 
     private static func saveData(_ data: Data, key: String) {
@@ -29,6 +32,7 @@ enum SideStoreCertificateStore {
             kSecAttrAccount as String: key
         ]
         SecItemDelete(query as CFDictionary)
+
         var item = query
         item[kSecValueData as String] = data
         SecItemAdd(item as CFDictionary, nil)
@@ -37,11 +41,13 @@ enum SideStoreCertificateStore {
     private static func loadData(key: String) -> Data? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            k3ecAttrAccount as String: key,
+            kSecAttrAccount as String: key,
             kSecReturnData as String: true
         ]
-        var result: CFTpeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else { return nil }
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else {
+            return nil
+        }
         return result as? Data
     }
 }
