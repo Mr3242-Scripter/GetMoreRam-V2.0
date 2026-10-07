@@ -17,9 +17,7 @@ public final class SideStoreClient: NSObject {
         // LiveContainer can install/re-sign the same app under a different
         // effective identifier. The parent directory of the running guest
         // bundle is the identifier LiveContainer itself uses for lookup.
-        let guestBundleID = Bundle.main.bundleURL
-            .deletingLastPathComponent()
-            .lastPathComponent
+        let guestBundleID = Bundle.main.bundleIdentifier ?? ""
 
         let liveContainerCallback: String
         if !guestBundleID.isEmpty {
