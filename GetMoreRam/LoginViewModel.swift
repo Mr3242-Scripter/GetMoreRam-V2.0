@@ -96,6 +96,7 @@ class LoginViewModel: ObservableObject {
 
             DataManager.shared.model.account = account
             DataManager.shared.model.session = session
+            SideStoreCertificateStore.synchronizeImportedCertificate()
             Keychain.shared.appleIDEmailAddress = appleID
             Keychain.shared.appleIDPassword = password
 
