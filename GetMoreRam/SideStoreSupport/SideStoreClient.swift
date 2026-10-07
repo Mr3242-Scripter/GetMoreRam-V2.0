@@ -19,7 +19,7 @@ public final class SideStoreClient: NSObject {
         // .app filename. GetMoreRam's identifier is com.Mr3242.getMoreRam.
         let liveContainerCallback =
             "livecontainer://livecontainer-launch" +
-            "?bundle-name=com.Mr3242.getMoreRam" +
+            "?bundle-name=com.aigch.getMoreRam" +
             "&urlscheme=getmoreram%3A%2F%2Fcertificate%3Fcert%3D$(BASE64_CERT)%26password%3D$(PASSWORD)"
 
         let callbackTemplate =
