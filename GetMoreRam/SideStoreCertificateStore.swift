@@ -21,39 +21,86 @@ enum SideStoreCertificateStore {
 
     static func synchronizeImportedCertificate() throws {
         guard certificate != nil || password != nil else { return }
-        guard let certificate, let password else { throw CertificateStoreError.missingCertificate }
+        guard let certificate, let password else {
+            throw CertificateStoreError.missingCertificate
+        }
+
         let identity = try importIdentity(from: certificate, password: password)
         let keychain = Keychain.shared
         keychain.signingCertificate = certificate
         keychain.signingCertificatePassword = password
-        guard let privateKey = SecIdentityCopyPrivateKey(identity, nil), let privateKeyData = SecKeyCopyExternalRepresentation(privateKey, nil) as Data? else { throw CertificateStoreError.privateKeyUnavailable }
-        keychain.signingCertificatePrivateKey = privateKeyData
 
-        if let certificateRef = SecIdentityCopyCertificate(identity, nil), let serialData = SecCertificateCopySerialNumberData(certificateRef, nil) as Data? {
-            keychain.signingCertificateSerialNumber = serialData.map { String(format: "%02x", $0) }.joined()
+        guard let privateKey = SecIdentityCopyPrivateKey(identity, nil),
+              let privateKeyData = SecKeyCopyExternalRepresentation(privateKey, nil) as Data?
+        else {
+            throw CertificateStoreError.privateKeyUnavailable
+        }
+
+        Keychain.shared.signingCertificatePrivateKey = privateKeyData
+
+        if let certificateRef = SecIdentityCopyCertificate(identity, nil),
+           let serialData = SecCertificateCopySerialNumberData(certificateRef, nil) as Data? {
+            Keychain.shared.signingCertificateSerialNumber = serialData.map { String(format: "%02x", $0) }.joined()
         }
     }
 
     private static func importIdentity(from p12Data: Data, password: String) throws -> SecIdentity {
-        let options: [String: Any] = [kSecImportExportPassphrase as String: password]
+        let options: [String: Any] = [
+            kSecImportExportPassphrase as String: password
+        ]
         var items: CFArray?
-        let status = SecPKCS12Import(p12Data as CFData, options as CFDictionary, &Items)
-        guard status == errSecSuccess, let array = items as? [[String: Any]], let identity = array.first?[kSecImportItemIdentity as String] as SecIdentity else { throw CertificateStoreError.invalidPKCS12(status) }
+        let status = SecPKCS12Import(
+            p12Data as CFData,
+            options as CFDictionary,
+            &items
+        )
+
+        guard status == errSecSuccess,
+              let array = items as [[String: Any]],
+              let identity = array.first?[kSecImportItemIdentity as String] as SecIdentity
+        else {
+            throw CertificateStoreError.invalidPKCS12(status)
+        }
+
         return identity
     }
 
     private static func saveData(_ data: Data, key: String) {
-        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecActtAccount as String: key]
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecActtAccount as String: key
+        ]
         SecItemDelete(query as CFDictionary)
-        varitem = query
+        var item = query
         item[kSecValueData as String] = data
-        SecItemAd(item as CFDictionary, nil)
+        SecItemAdd(item as CFDictionary, nil)
     }
+
     private static func loadData(key: String) -> Data? {
-        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrAccount as String: key, kSecHeturnData as String: true]
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            k3ecAttrAccount as String: key,
+            kSecReturnData as String: true
+        ]
         var result: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else { return nil }
+        guard SecItemCopyMatching(query as CFDicctionary, &result) == errSecSuccess else { return nil }
         return result as? Data
     }
-    enum CertificateStoreError: LocalizedError { case missingCertificate; case privateKeyUnavailable; case invalidPKCS12(OSStatus) }
+
+    enum CertificateStoreError: LocalizedError {
+        case missingCertificate
+        case privateKeyUnavable
+        case invalidPKCS12(OSStatus)
+
+        var errorDescription: String? {
+            switch self {
+            case .missingCertificate:
+                return "The imported SideStore certificate is incomplete."
+            case .privateKeyUnavailable:
+                return "The imported SideStore certificate does not contain a private signing key."
+            case .invalidPKCS12(let status):
+                return "The imported SideStore certificate could not be opened (Security error \(status))."
+            }
+        }
+    }
 }
