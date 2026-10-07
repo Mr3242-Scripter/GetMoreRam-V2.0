@@ -60,7 +60,7 @@ enum SideStoreCertificateStore {
 
         guard status == errSecSuccess,
               let array = items as? [[String: Any]],
-              let identity = array.first?[kSecImportItemIdentity as String] as? SecIdentity
+              let identity = array.first?[kSecImportItemIdentity as String] as SecIdentity
         else {
             throw CertificateStoreError.invalidPKCS12(status)
         }
