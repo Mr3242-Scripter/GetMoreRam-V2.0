@@ -2,54 +2,30 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
-		<key>CFBundleDisplayName</key>
-	<string>More Ram!</string>
-	<key>CFBundleName</key>
-	<string>More Ram!</string>
-	<key>NSCameraUsageDescription</key>
-	<string>More Ram uses the camera when you choose to set a custom app icon.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>More Ram uses your photos when you choose a custom app icon.</string>
-</dict>
+    <key>NSAppTransportSecurity</key>
+    <dict><key>NSAllowsArbitraryLoads</key><true/></dict>
+    <key>CFBundleDisplayName</key><string>More Ram!</string>
+    <key>CFBundleName</key><string>More Ram!</string>
+    <key>NSCameraUsageDescription</key><string>More Ram uses the camera when you choose to set a custom app icon.</string>
+    <key>NSPhotoLibraryUsageDescription</key><string>More Ram uses your photos when you choose a custom app icon.</string>
     <key>UTImportedTypeDeclarations</key>
-    <array>
-        <dict>
-            <key>UTTypeIdentifier</key>
-            <string>com.sidestore.sideconf</string>
-            <key>UTTypeDescription</key>
-            <string>SideStore Account Configuration</string>
-            <key>UTTypeConformsTo</key>
-            <array>
-                <string>public.data</string>
-                <string>public.content</string>
-            </array>
-            <key>UTTypeTagSpecification</key>
-            <dict>
-                <key>public.filename-extension</key>
-                <array>
-                    <string>sideconf</string>
-                </array>
-            </dict>
+    <array><dict>
+        <key>UTTypeIdentifier</key><string>com.sidestore.sideconf</string>
+        <key>UTTypeDescription</key><string>SideStore Account Configuration</string>
+        <key>UTTypeConformsTo</key><array><string>public.data</string><string>public.content</string></array>
+        <key>UTTypeTagSpecification</key><dict>
+            <key>public.filename-extension</key><array><string>sideconf</string></array>
         </dict>
-    </array>
+    </dict></array>
     <key>LSApplicationQueriesSchemes</key>
     <array>
         <string>sidestore</string>
+        <string>livecontainer</string>
     </array>
     <key>CFBundleURLTypes</key>
-    <array>
-        <dict>
-            <key>CFBundleURLName</key>
-            <string>com.mr3242.getmoreram.sidestore</string>
-            <key>CFBundleURLSchemes</key>
-            <array>
-                <string>getmoreram</string>
-            </array>
-        </dict>
-    </array>
+    <array><dict>
+        <key>CFBundleURLName</key><string>com.mr3242.getmoreram.sidestore</string>
+        <key>CFBundleURLSchemes</key><array><string>getmoreram</string></array>
+    </dict></array>
 </dict>
 </plist>
