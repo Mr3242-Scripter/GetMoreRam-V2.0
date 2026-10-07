@@ -5,12 +5,11 @@ import UIKit
 public final class SideStoreClient: NSObject {
     public static let shared = SideStoreClient()
     private let callbackScheme = "getmoreram"
-
     private override init() {}
 
     @MainActor
     public func openCertificateExport() async -> Bool {
-        let callbackTemplate = "\(callbackScheme)://certificate?cert=\(BASE64_CERT)&password=\(PASSWORD)"
+        let callbackTemplate = "getmoreram://certificate?cert=\\(BASE64_CERT)&password=\\(PASSWORD)"
         guard var components = URLComponents(string: "sidestore://certificate") else { return false }
         components.queryItems = [URLQueryItem(name: "callback_template", value: callbackTemplate)]
         guard let url = components.url, UIApplication.shared.canOpenURL(url) else { return false }
