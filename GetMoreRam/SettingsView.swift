@@ -175,13 +175,13 @@ struct SettingsView: View {
             NavigationStack {
                 Form {
                     Section {
-                        SecureField("ClÃ© de dÃ©chiffrement", text: $importPassword)
+                        SecureField("ClÃÂ© de dÃÂ©chiffrement", text: $importPassword)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                     } header: {
-                        Text("VÃƒÂ©rification du fichier")
+                        Text("VÃÆÃÂ©rification du fichier")
                     } footer: {
-                        Text("Entre le mot de passe utilisÃƒÂ© lors de la crÃƒÂ©ation de ce fichier SideStore. Le mot de passe n'est pas enregistrÃƒÂ© par GetMoreRam.")
+                        Text("Entre le mot de passe utilisÃÆÃÂ© lors de la crÃÆÃÂ©ation de ce fichier SideStore. Le mot de passe n'est pas enregistrÃÆÃÂ© par GetMoreRam.")
                     }
                     Section {
                         Button("Importer le compte") {
@@ -306,7 +306,7 @@ struct SettingsView: View {
                                 .foregroundStyle(.primary)
 
                             Text(
-                                "\(team.identifier) Ã‚Â· \(teamTypeDescription(team.type))"
+                                "\(team.identifier) ÃâÃÂ· \(teamTypeDescription(team.type))"
                             )
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -559,7 +559,7 @@ struct SettingsView: View {
         Task { @MainActor in
             let opened = await SideStoreSupport.importCertificate()
             if !opened {
-                errorInfo = "SideStore 0.6.2 ou supérieur n'est pas disponible. Ouvrez SideStore puis réessayez."
+                errorInfo = "SideStore 0.6.2 ou supÃ©rieur n'est pas disponible. Ouvrez SideStore puis rÃ©essayez."
                 errorShow = true
             }
             isExportingSideStoreCertificate = false
@@ -582,7 +582,7 @@ struct SettingsView: View {
         let password = items.first(where: { $0.name == "password" })?.value ?? ""
         SideStoreCertificateStore.save(certificate: certificateData, password: password)
         isExportingSideStoreCertificate = false
-        importResultInfo = "Certificat SideStore importé avec succès. Le certificat est maintenant disponible pour GetMoreRam."
+        importResultInfo = "Certificat SideStore importÃ© avec succÃ¨s. Le certificat est maintenant disponible pour GetMoreRam."
         importResultShow = true
     }
 
@@ -597,7 +597,7 @@ struct SettingsView: View {
             errorShow = true
         case .success(let url):
             guard url.pathExtension.lowercased() == "sideconf" else {
-                errorInfo = "Le fichier sÃ©lectionnÃ© n'est pas un fichier .sideconf."
+                errorInfo = "Le fichier sÃÂ©lectionnÃÂ© n'est pas un fichier .sideconf."
                 errorShow = true
                 return
             }
@@ -617,7 +617,7 @@ struct SettingsView: View {
 
     private func completeSideStoreImport() {
         guard let data = pendingImportData else {
-            errorInfo = "Aucun fichier SideStore ÃƒÂ  importer."
+            errorInfo = "Aucun fichier SideStore ÃÆÃÂ  importer."
             errorShow = true
             return
         }
@@ -630,7 +630,7 @@ struct SettingsView: View {
             // Keep the encrypted file pending so the user can retry with another key.
             // The decryption password is never persisted.
             importPassword = ""
-            errorInfo = "La clÃ© de dÃ©chiffrement est incorrecte ou le fichier SideStore ne peut pas Ãªtre dÃ©chiffrÃ©. RÃ©essayez avec la clÃ© dâ€™exportation SideStore."
+            errorInfo = "La clÃÂ© de dÃÂ©chiffrement est incorrecte ou le fichier SideStore ne peut pas ÃÂªtre dÃÂ©chiffrÃÂ©. RÃÂ©essayez avec la clÃÂ© dÃ¢â¬â¢exportation SideStore."
             errorShow = true
             return
         }
@@ -639,6 +639,7 @@ struct SettingsView: View {
         pendingImportData = nil
         importPassword = ""
         pendingImportedAccount = nil
+        SideStoreCertificateStore.synchronizeImportedCertificate()
         email = imported.email
         sharedModel.session = nil
         sharedModel.account = nil
