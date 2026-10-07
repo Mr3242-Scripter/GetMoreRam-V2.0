@@ -22,7 +22,7 @@ enum SideStoreCertificateStore {
     static func synchronizeImportedCertificate() {
         guard let certificate else { return }
         Keychain.shared.signingCertificate = certificate
-        Keychain.shared.signingCertificatePassword = password
+        Keychain.signingCertificatePassword = password
     }
 
     private static func saveData(_ data: Data, key: String) {
@@ -41,7 +41,7 @@ enum SideStoreCertificateStore {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
-            kSecreturnData as String: true
+            KSecReturnData as String: true
         ]
         var result: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else {
