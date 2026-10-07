@@ -9,22 +9,27 @@ public final class SideStoreClient: NSObject {
 
     @MainActor
     public func openCertificateExport() async -> Bool {
-        // When GetMoreRam is a LiveContainer guest, ask the host to launch
-        // this guest and forward the callback URL. Otherwise return directly
-        // to the installed GetMoreRam application.
-        let directCallback = "getmoreram://certificate?cert=$(BASE64_CERT)&password=$(PASSWORD)"
-        let liveContainerCallback = "livecontainer://livecontainer-launch?bundle-name=GetMoreRam.app&urlscheme=getmoreram%3A%2F%2Fcertificate%3Fcert%3D$(BASE64_CERT)%26password%3D$(PASSWORD)"
+        // SideStore replaces these literal placeholders with the exported
+        // certificate and password before opening the callback URL.
+        let directCallback = "getmoreram://certificate?cert=\$(BASE64_CERT)&password=\$(PASSWORD)"
 
-        let liveContainerURL = URL(string: "livecontainer://")
-        let runningInLiveContainer = liveContainerURL.map {
-            UIApplication.shared.canOpenURL($0)
-        } ?? false
+        // LiveContainer guests cannot reliably receive a normal custom URL
+        // scheme from another app. Route the callback through LiveContainer's
+        // launch URL instead. The bundle-name must be the guest's bundle ID,
+        // not the .app filename.
+        let liveContainerCallback = "livecontainer://livecontainer-launch?bundle-name=com.Mr3242.getMoreRam&urlscheme=getmoreram%3A%2F%2Fcertificate%3Fcert%3D\$(BASE64_CERT)%26password%3D\$(PASSWORD)"
 
-        let callbackTemplate = runningInLiveContainer ? liveContainerCallback : directCallback
+        let runningInLiveContainer =
+            ProcessInfo.processInfo.environment["LC_HOME_PATH"] != nil
+
+        let callbackTemplate = runningInLiveContainer
+            ? liveContainerCallback
+            : directCallback
 
         guard var components = URLComponents(string: "sidestore://certificate") else {
             return false
         }
+
         components.queryItems = [
             URLQueryItem(name: "callback_template", value: callbackTemplate)
         ]
@@ -33,11 +38,14 @@ public final class SideStoreClient: NSObject {
               UIApplication.shared.canOpenURL(url) else {
             return false
         }
+
         return await UIApplication.shared.open(url, options: [:])
     }
 
     public var available: Bool {
-        guard let url = URL(string: "sidestore://certificate") else { return false }
+        guard let url = URL(string: "sidestore://certificate") else {
+            return false
+        }
         return UIApplication.shared.canOpenURL(url)
     }
 }
