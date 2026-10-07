@@ -1,13 +1,50 @@
 import SwiftUI
 
-struct AppIDView: View {
-    @StateObject private var viewModel: AppIDViewModel
+struct AppIDEditView: View {
+    @StateObject var viewModel: AppIDModel
     @State private var errorShow = false
     @State private var errorInfo = ""
 
-    init(viewModel: AppIDViewModel) {
-        _viewModel = StateObject(wrappedValue: viewModel)
+    var body: some View {
+        Form {
+            Section {
+                Button {
+                    Task { await addIncreasedMemoryLimit() }
+                } label: {
+                    Text("Add Increased Memory Limit")
+                }
+
+                Section {
+                    Text(viewModel.result)
+                        .font(.system(.subheadline, design: .monospaced))
+                } header: {
+                    Text("Server Response")
+                }
+            }
+        }
+        .alert("Error", isPresented: $errorShow) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorInfo)
+        }
+        .navigationTitle(viewModel.bundleID)
+        .navigationBarTitleDisplayMode(.inline)
     }
+
+    private func addIncreasedMemoryLimit() async {
+        do {
+            try await viewModel.addIncreasedMemory()
+        } catch {
+            errorInfo = error.localizedDescription
+            errorShow = true
+        }
+    }
+}
+
+struct AppIDView: View {
+    @StateObject private var viewModel = AppIDViewModel()
+    @State private var errorShow = false
+    @State private var errorInfo = ""
 
     var body: some View {
         NavigationView {
