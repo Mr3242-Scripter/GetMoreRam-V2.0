@@ -9,18 +9,27 @@ public final class SideStoreClient: NSObject {
 
     @MainActor
     public func openCertificateExport() async -> Bool {
-        // SideStore substitutes these placeholders with the actual
-        // certificate/password before invoking the callback.
         let directCallback =
             "getmoreram://certificate?cert=$(BASE64_CERT)&password=$(PASSWORD)"
 
-        // IMPORTANT: LiveContainer's livecontainer-launch handler resolves
-        // bundle-name as the guest application's BUNDLE IDENTIFIER, not the
-        // .app filename. GetMoreRam's identifier is com.Mr3242.getMoreRam.
-        let liveContainerCallback =
-            "livecontainer://livecontainer-launch" +
-            "?bundle-name=More%20Ram%21" +
-            "&urlscheme=getmoreram%3A%2F%2Fcertificate%3Fcert%3D$(BASE64_CERT)%26password%3D$(PASSWORD)"
+        // LiveContainer's launch handler expects bundle-name to be the
+        // guest bundle directory / bundle identifier. Do not hard-code it:
+        // LiveContainer can install/re-sign the same app under a different
+        // effective identifier. The parent directory of the running guest
+        // bundle is the identifier LiveContainer itself uses for lookup.
+        let guestBundleID = Bundle.main.bundleURL
+            .deletingLastPathComponent()
+            .lastPathComponent
+
+        let liveContainerCallback: String
+        if !guestBundleID.isEmpty {
+            liveContainerCallback =
+                "livecontainer://livecontainer-launch" +
+                "?bundle-name=\(guestBundleID.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? guestBundleID)" +
+                "&urlscheme=getmoreram%3A%2F%2Fcertificate%3Fcert%3D$(BASE64_CERT)%26password%3D$(PASSWORD)"
+        } else {
+            liveContainerCallback = directCallback
+        }
 
         let callbackTemplate =
             getenv("LC_HOME_PATH") != nil
