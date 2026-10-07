@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AppIDEditView: View {
-    @StateObject var viewModel: AppIDModel
+    @StateObject private var viewModel: AppIDModel
     @State private var errorShow = false
     @State private var errorInfo = ""
 
@@ -42,9 +42,13 @@ struct AppIDEditView: View {
 }
 
 struct AppIDView: View {
-    @StateObject private var viewModel = AppIDViewModel()
+    @StateObject private var viewModel: AppIDViewModel
     @State private var errorShow = false
     @State private var errorInfo = ""
+
+    init(viewModel: AppIDViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModel)
+    }
 
     var body: some View {
         NavigationView {
