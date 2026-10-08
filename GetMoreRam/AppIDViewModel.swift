@@ -118,6 +118,7 @@ private enum AppleDeveloperServices {
 final class AppIDViewModel: ObservableObject {
     @Published var appIDs: [AppIDModel] = []
     @Published private(set) var isRefreshing = false
+    @Published private(set) var unlockDebugResults: [String] = []
 
     func fetchAppIDs() async throws {
         _ = SideStoreCertificateStore.activateImportedCertificate()
@@ -146,6 +147,7 @@ final class AppIDViewModel: ObservableObject {
         isRefreshing = true
         defer { isRefreshing = false }
 
+        unlockDebugResults = []
         try await refreshData()
 
         var failures: [String] = []
@@ -153,9 +155,11 @@ final class AppIDViewModel: ObservableObject {
         for appID in appIDs {
             do {
                 try await appID.addIncreasedMemory()
+                unlockDebugResults.append("SUCCESS  \(appID.bundleID)")
             } catch {
                 let message = error.detailedDescription
                 appID.result = "Error: \(message)"
+                unlockDebugResults.append("FAILED   \(appID.bundleID): \(message)")
                 failures.append("\(appID.bundleID): \(message)")
             }
         }
