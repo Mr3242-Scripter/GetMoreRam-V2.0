@@ -69,13 +69,10 @@ final class AppUpdateManager: ObservableObject {
             }
         }
 
-        let tagName: String
         let publishedAt: Date?
-        let prerelease: Bool
         let assets: [Asset]
 
         enum CodingKeys: String, CodingKey {
-            case tagName = "tag_name"
             case publishedAt = "published_at"
             case prerelease
             case assets
@@ -108,7 +105,9 @@ final class AppUpdateManager: ObservableObject {
         defer { isChecking = false }
 
         do {
-            var request = URLRequest(url: repositoryAPI)
+            var request = URLRequest(
+                url: URL(string: "https://api.github.com/repos/Mr3242-Scripter/GetMoreRam-V2.0/releases?per_page=100")!
+            )
             request.setValue("GetMoreRam Update Checker", forHTTPHeaderField: "User-Agent")
             request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
 
@@ -122,30 +121,46 @@ final class AppUpdateManager: ObservableObject {
             decoder.dateDecodingStrategy = .iso8601
             let releases = try decoder.decode([GitHubRelease].self, from: data)
 
-            let candidates = releases.compactMap { release -> (release: GitHubRelease, url: URL, version: String)? in
+            // The nightly release keeps the same "nightly" tag, so the tag
+            // itself cannot be used as the application version. Instead, the
+            // release contains a generated manifest containing the exact
+            // CFBundleShortVersionString and IPA URL from that build.
+            let candidates = releases.compactMap { release -> (release: GitHubRelease, manifestURL: URL)? in
                 guard let asset = release.assets.first(where: {
-                    $0.name.caseInsensitiveCompare("GetMoreRam.ipa") == .orderedSame
+                    $0.name.caseInsensitiveCompare("GetMoreRamUpdate.json") == .orderedSame
                 }),
                 let url = URL(string: asset.browserDownloadURL) else {
                     return nil
                 }
-                return (release, url, normalizedVersion(release.tagName))
+                return (release, url)
             }
 
             guard let newest = candidates.max(by: {
                 ($0.release.publishedAt ?? .distantPast) < ($1.release.publishedAt ?? .distantPast)
             }) else {
-                throw UpdateError.noRelease
+                throw UpdateError.noManifest
             }
 
-            latestVersion = newest.version
-            latestIPAURL = newest.url
+            var manifestRequest = URLRequest(url: newest.manifestURL)
+            manifestRequest.setValue("GetMoreRam Update Checker", forHTTPHeaderField: "User-Agent")
+            let (manifestData, manifestResponse) = try await URLSession.shared.data(for: manifestRequest)
 
-            if compareVersions(newest.version, normalizedVersion(currentVersion)) == .orderedDescending {
+            guard let manifestHTTPResponse = manifestResponse as? HTTPURLResponse,
+                  (200..<300).contains(manifestHTTPResponse.statusCode) else {
+                throw UpdateError.invalidManifest
+            }
+
+            let manifest = try decoder.decode(UpdateManifest.self, from: manifestData)
+            guard let ipaURL = URL(string: manifest.downloadURL) else {
+                throw UpdateError.invalidManifest
+            }
+
+            latestVersion = manifest.version
+            latestIPAURL = ipaURL
+
+            if compareVersions(manifest.version, currentVersion) == .orderedDescending {
                 updateAvailable = true
-                message = newest.release.prerelease
-                    ? "A newer preview release is available."
-                    : "A newer release is available."
+                message = "A newer version is available."
             } else {
                 message = "You are using the latest available version."
             }
@@ -207,9 +222,15 @@ final class AppUpdateManager: ObservableObject {
         return .orderedSame
     }
 
+    private struct UpdateManifest: Decodable {
+        let version: String
+        let downloadURL: String
+    }
+
     private enum UpdateError: LocalizedError {
         case invalidResponse
-        case noRelease
+        case invalidManifest
+        case noManifest
 
         var errorDescription: String? {
             switch self {
