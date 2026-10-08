@@ -581,8 +581,16 @@ struct SettingsView: View {
 
         let password = items.first(where: { $0.name == "password" })?.value ?? ""
         SideStoreCertificateStore.save(certificate: certificateData, password: password)
+
+        guard SideStoreCertificateStore.activateImportedCertificate() else {
+            errorInfo = "The SideStore certificate was imported but could not be activated for GetMoreRam."
+            errorShow = true
+            isExportingSideStoreCertificate = false
+            return
+        }
+
         isExportingSideStoreCertificate = false
-        importResultInfo = "Certificat SideStore importÃ© avec succÃ¨s. Le certificat est maintenant disponible pour GetMoreRam."
+        importResultInfo = "Successfully signed in"
         importResultShow = true
     }
 
