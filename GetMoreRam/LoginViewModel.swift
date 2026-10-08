@@ -104,6 +104,11 @@ class LoginViewModel: ObservableObject {
             logging(text: "Successfully fetched teams")
             availableTeams = teams
 
+            // The authentication itself succeeded above. Keep the shared UI login state
+            // in sync with the authenticated account so the Settings view does not
+            // immediately present the Sign In screen again.
+            DataManager.shared.model.isLogin = true
+
             return true
         } catch {
             if isAuthenticationCancellationRequested {
