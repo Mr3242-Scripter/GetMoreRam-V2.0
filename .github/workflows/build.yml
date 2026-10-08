@@ -3,6 +3,10 @@ name: Xcode - Build
 permissions:
   contents: write
 
+concurrency:
+  group: versioned-build
+  cancel-in-progress: false
+
 on: 
   push:
   pull_request:
