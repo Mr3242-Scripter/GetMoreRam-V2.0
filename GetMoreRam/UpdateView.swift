@@ -1,0 +1,223 @@
+import SwiftUI
+import UIKit
+
+struct UpdateView: View {
+    @StateObject private var updater = AppUpdateManager()
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    LabeledContent("Current Version", value: updater.currentVersion)
+
+                    if let latest = updater.latestVersion {
+                        LabeledContent("Latest Version", value: latest)
+                    }
+
+                    if updater.isChecking {
+                        ProgressView("Checking for updates...")
+                    } else if let message = updater.message {
+                        Text(message)
+                            .foregroundStyle(updater.updateAvailable ? .primary : .secondary)
+                    }
+                }
+
+                Section {
+                    Button {
+                        Task { await updater.checkForUpdates() }
+                    } label: {
+                        Label(
+                            updater.isChecking ? "Checking..." : "Check for Update",
+                            systemImage: "arrow.clockwise"
+                        )
+                    }
+                    .disabled(updater.isChecking || updater.isUpdating)
+
+                    if updater.updateAvailable {
+                        Button {
+                            Task { await updater.update() }
+                        } label: {
+                            Label(
+                                updater.isUpdating ? "Opening SideStore..." : "Update Now",
+                                systemImage: "arrow.down.app"
+                            )
+                        }
+                        .disabled(updater.isUpdating)
+                    }
+                } footer: {
+                    Text("The newest GitHub release is checked. When an update is available, SideStore is opened with the newest GetMoreRam IPA.")
+                }
+            }
+            .navigationTitle("Update")
+            .task {
+                await updater.checkForUpdates()
+            }
+        }
+    }
+}
+
+@MainActor
+final class AppUpdateManager: ObservableObject {
+    struct GitHubRelease: Decodable {
+        struct Asset: Decodable {
+            let name: String
+            let browserDownloadURL: String
+
+            enum CodingKeys: String, CodingKey {
+                case name
+                case browserDownloadURL = "browser_download_url"
+            }
+        }
+
+        let tagName: String
+        let publishedAt: Date?
+        let prerelease: Bool
+        let assets: [Asset]
+
+        enum CodingKeys: String, CodingKey {
+            case tagName = "tag_name"
+            case publishedAt = "published_at"
+            case prerelease
+            case assets
+        }
+    }
+
+    @Published private(set) var currentVersion: String
+    @Published private(set) var latestVersion: String?
+    @Published private(set) var updateAvailable = false
+    @Published private(set) var isChecking = false
+    @Published private(set) var isUpdating = false
+    @Published private(set) var message: String?
+
+    private var latestIPAURL: URL?
+
+    private let repositoryAPI = URL(string: "https://api.github.com/repos/Mr3242-Scripter/GetMoreRam-V2.0/releases")!
+
+    init() {
+        currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
+    }
+
+    func checkForUpdates() async {
+        guard !isChecking else { return }
+
+        isChecking = true
+        message = nil
+        latestVersion = nil
+        updateAvailable = false
+        latestIPAURL = nil
+        defer { isChecking = false }
+
+        do {
+            var request = URLRequest(url: repositoryAPI)
+            request.setValue("GetMoreRam Update Checker", forHTTPHeaderField: "User-Agent")
+            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200..<300).contains(httpResponse.statusCode) else {
+                throw UpdateError.invalidResponse
+            }
+
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let releases = try decoder.decode([GitHubRelease].self, from: data)
+
+            let candidates = releases.compactMap { release -> (release: GitHubRelease, url: URL, version: String)? in
+                guard let asset = release.assets.first(where: {
+                    $0.name.caseInsensitiveCompare("GetMoreRam.ipa") == .orderedSame
+                }),
+                let url = URL(string: asset.browserDownloadURL) else {
+                    return nil
+                }
+                return (release, url, normalizedVersion(release.tagName))
+            }
+
+            guard let newest = candidates.max(by: {
+                ($0.release.publishedAt ?? .distantPast) < ($1.release.publishedAt ?? .distantPast)
+            }) else {
+                throw UpdateError.noRelease
+            }
+
+            latestVersion = newest.version
+            latestIPAURL = newest.url
+
+            if compareVersions(newest.version, normalizedVersion(currentVersion)) == .orderedDescending {
+                updateAvailable = true
+                message = newest.release.prerelease
+                    ? "A newer preview release is available."
+                    : "A newer release is available."
+            } else {
+                message = "You are using the latest available version."
+            }
+        } catch {
+            message = "Unable to check for updates: \(error.localizedDescription)"
+        }
+    }
+
+    func update() async {
+        guard let latestIPAURL else {
+            await checkForUpdates()
+            return
+        }
+
+        isUpdating = true
+        defer { isUpdating = false }
+
+        var components = URLComponents()
+        components.scheme = "sidestore"
+        components.host = "install"
+        components.queryItems = [
+            URLQueryItem(name: "url", value: latestIPAURL.absoluteString)
+        ]
+
+        guard let sideStoreURL = components.url else {
+            message = "The update URL could not be created."
+            return
+        }
+
+        UIApplication.shared.open(sideStoreURL, options: [:]) { [weak self] opened in
+            Task { @MainActor in
+                self?.message = opened
+                    ? "SideStore was opened. Finish the installation there."
+                    : "SideStore is not available. Install the update through SideStore."
+            }
+        }
+    }
+
+    private func normalizedVersion(_ value: String) -> String {
+        var version = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if version.lowercased().hasPrefix("v") { version.removeFirst() }
+        if let separator = version.firstIndex(of: "-") {
+            version = String(version[..<separator])
+        }
+        return version
+    }
+
+    private func compareVersions(_ lhs: String, _ rhs: String) -> ComparisonResult {
+        let left = lhs.split(separator: ".").map { Int($0) ?? 0 }
+        let right = rhs.split(separator: ".").map { Int($0) ?? 0 }
+        let count = max(left.count, right.count)
+
+        for index in 0..<count {
+            let l = index < left.count ? left[index] : 0
+            let r = index < right.count ? right[index] : 0
+            if l < r { return .orderedAscending }
+            if l > r { return .orderedDescending }
+        }
+        return .orderedSame
+    }
+
+    private enum UpdateError: LocalizedError {
+        case invalidResponse
+        case noRelease
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidResponse:
+                return "GitHub returned an invalid response."
+            case .noRelease:
+                return "No GitHub release containing GetMoreRam.ipa was found."
+            }
+        }
+    }
+}
