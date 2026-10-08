@@ -118,6 +118,10 @@ class SharedModel: ObservableObject {
         isRestoringSession = true
         defer { isRestoringSession = false }
 
+        // Keep the imported SideStore certificate active for every operation that
+        // restores or uses the authenticated signing session.
+        SideStoreCertificateStore.synchronizeImportedCertificate()
+
         let anisetteData = try await AnisetteDataHelper.shared.getAnisetteData()
         let (restoredAccount, restoredSession) = try await AppleAPI.shared.authenticate(
             appleID: appleID,
