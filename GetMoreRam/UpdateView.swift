@@ -38,7 +38,7 @@ struct UpdateView: View {
                             Task { await updater.update() }
                         } label: {
                             Label(
-                                updater.isUpdating ? "Opening SideStore..." : "Update Now",
+                                updater.isUpdating ? (updater.isRunningInLiveContainer ? "Opening LiveContainer..." : "Opening SideStore...") : "Update Now",
                                 systemImage: "arrow.down.app"
                             )
                         }
@@ -99,7 +99,7 @@ final class AppUpdateManager: ObservableObject {
 
     private var latestIPAURL: URL?
 
-    private var isRunningInLiveContainer: Bool {
+    var isRunningInLiveContainer: Bool {
         let path = Bundle.main.bundlePath
         return path.contains("/Documents/Applications/") || path.contains("/LiveContainer/Applications/")
     }
