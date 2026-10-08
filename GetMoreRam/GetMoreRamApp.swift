@@ -35,8 +35,7 @@ final class AppDelegate: NSObject, ObservableObject {
     private func autoFireOnStartup() async {
         let viewModel = AppIDViewModel()
         do {
-            try await viewModel.fetchAppIDs()
-            try await viewModel.refreshAndUnlockAll()
+            try await viewModel.unlockAllRAM()
         } catch {
             print("Auto-fire error: \(error.localizedDescription)")
         }
