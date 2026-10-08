@@ -131,20 +131,20 @@ final class AppIDViewModel: ObservableObject {
         appIDs = ids.map(AppIDModel.init)
     }
 
-    func refreshAndUnlockAll() async throws {
+    func refresh() async throws {
         guard !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
 
-        try await DataManager.shared.model.restoreSession()
+        try await refreshData()
+    }
 
-        guard DataManager.shared.model.team != nil,
-              DataManager.shared.model.session != nil else {
-            throw "Please Sign In or import a SideStore account first."
-        }
+    func unlockAllRAM() async throws {
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
 
-        SideStoreCertificateStore.synchronizeImportedCertificate()
-        try await fetchAppIDs()
+        try await refreshData()
 
         var failures: [String] = []
 
@@ -163,5 +163,17 @@ final class AppIDViewModel: ObservableObject {
         if !failures.isEmpty {
             throw "Some App IDs could not be unlocked:\n\n" + failures.joined(separator: "\n")
         }
+    }
+
+    private func refreshData() async throws {
+        try await DataManager.shared.model.restoreSession()
+
+        guard DataManager.shared.model.team != nil,
+              DataManager.shared.model.session != nil else {
+            throw "Please Sign In or import a SideStore account first."
+        }
+
+        SideStoreCertificateStore.synchronizeImportedCertificate()
+        try await fetchAppIDs()
     }
 }
