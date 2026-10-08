@@ -49,6 +49,16 @@ struct UpdateView: View {
                 }
             }
             .navigationTitle("Update")
+            .safeAreaInset(edge: .bottom) {
+                Text("If GetMoreRam is installed normally, it will use SideStore to update. If GetMoreRam is launched from LiveContainer, it will try to update itself (beta feature).")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity)
+                    .background(.thinMaterial)
+            }
             .task {
                 await updater.checkForUpdates()
             }
