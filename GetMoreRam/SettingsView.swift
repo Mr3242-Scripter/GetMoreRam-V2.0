@@ -209,6 +209,17 @@ struct SettingsView: View {
             handleSideStoreCertificateCallback(url)
         }
         .onAppear {
+            // If the SideStore certificate was imported previously, reactivate it
+            // when Settings is opened so the same success state is available even
+            // when the import callback is not fired again.
+            if SideStoreCertificateStore.certificate != nil,
+               SideStoreCertificateStore.activateImportedCertificate() {
+                if !sharedModel.isLogin {
+                    importResultInfo = "Successfully signed in"
+                    importResultShow = true
+                }
+            }
+
             if sharedModel.isLogin {
                 email = sharedModel.account?.appleID ?? email
                 teamId = sharedModel.team?.identifier ?? teamId
