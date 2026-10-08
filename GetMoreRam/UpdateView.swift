@@ -80,6 +80,7 @@ final class AppUpdateManager: ObservableObject {
         }
 
         let publishedAt: Date?
+        let prerelease: Bool
         let assets: [Asset]
 
         enum CodingKeys: String, CodingKey {
@@ -259,8 +260,8 @@ final class AppUpdateManager: ObservableObject {
             switch self {
             case .invalidResponse:
                 return "GitHub returned an invalid response."
-            case .noRelease:
-                return "No GitHub release containing GetMoreRam.ipa was found."
+            case .noManifest:
+                return "No published update manifest was found."
             }
         }
     }
