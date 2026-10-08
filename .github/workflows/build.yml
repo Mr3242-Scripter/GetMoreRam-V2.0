@@ -113,11 +113,22 @@ jobs:
         run: |
           mv "$archive_path.xcarchive/Products/Applications" Payload
           zip -r "$scheme.ipa" "Payload" -x "._*" -x ".DS_Store" -x "__MACOSX"
+      - name: Create update manifest
+        run: |
+          version=$(grep -m1 'MARKETING_VERSION = ' GetMoreRam.xcodeproj/project.pbxproj | sed 's/.*MARKETING_VERSION = \([^;]*\);.*/\1/')
+          cat > GetMoreRamUpdate.json <<EOF
+          {
+            "version": "$version",
+            "downloadURL": "https://github.com/${{ github.repository }}/releases/download/nightly/GetMoreRam.ipa"
+          }
+          EOF
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.scheme }}.ipa
-          path: ${{ env.scheme }}.ipa
+          path: |
+            ${{ env.scheme }}.ipa
+            GetMoreRamUpdate.json
 
   release__nightly:
     name: Nightly Release
@@ -144,3 +155,4 @@ jobs:
             This is a nightly release [created automatically with GitHub Actions workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}).
           files: |
             ${{ needs.package.outputs.artifact }}
+            GetMoreRamUpdate.json
