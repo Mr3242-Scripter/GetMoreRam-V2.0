@@ -45,7 +45,7 @@ struct UpdateView: View {
                         .disabled(updater.isUpdating)
                     }
                 } footer: {
-                    Text("The newest GitHub release is checked. When an update is available, SideStore is opened with the newest GetMoreRam IPA.")
+                    Text("The newest GitHub release is checked. When an update is available, the app is handed to LiveContainer when running there; otherwise SideStore is used.")
                 }
             }
             .navigationTitle("Update")
@@ -87,6 +87,11 @@ final class AppUpdateManager: ObservableObject {
     @Published private(set) var message: String?
 
     private var latestIPAURL: URL?
+
+    private var isRunningInLiveContainer: Bool {
+        let path = Bundle.main.bundlePath
+        return path.contains("/Documents/Applications/") || path.contains("/LiveContainer/Applications/")
+    }
 
     private let repositoryAPI = URL(string: "https://api.github.com/repos/Mr3242-Scripter/GetMoreRam-V2.0/releases")!
 
@@ -179,22 +184,30 @@ final class AppUpdateManager: ObservableObject {
         defer { isUpdating = false }
 
         var components = URLComponents()
-        components.scheme = "sidestore"
+        components.scheme = isRunningInLiveContainer ? "livecontainer" : "sidestore"
         components.host = "install"
         components.queryItems = [
             URLQueryItem(name: "url", value: latestIPAURL.absoluteString)
         ]
 
-        guard let sideStoreURL = components.url else {
+        guard let installerURL = components.url else {
             message = "The update URL could not be created."
             return
         }
 
-        UIApplication.shared.open(sideStoreURL, options: [:]) { [weak self] opened in
+        UIApplication.shared.open(installerURL, options: [:]) { [weak self] opened in
             Task { @MainActor in
-                self?.message = opened
-                    ? "SideStore was opened. Finish the installation there."
-                    : "SideStore is not available. Install the update through SideStore."
+                guard let self else { return }
+
+                if self.isRunningInLiveContainer {
+                    self.message = opened
+                        ? "LiveContainer was opened with the update. Complete the replacement there."
+                        : "LiveContainer could not be opened to install the update."
+                } else {
+                    self.message = opened
+                        ? "SideStore was opened. Finish the installation there."
+                        : "SideStore is not available. Install the update through SideStore."
+                }
             }
         }
     }
