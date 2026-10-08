@@ -19,11 +19,18 @@ enum SideStoreCertificateStore {
         return String(data: data, encoding: .utf8)
     }
 
-    static func synchronizeImportedCertificate() {
-        guard let certificate else { return }
+    @discardableResult
+    static func activateImportedCertificate() -> Bool {
+        guard let certificate, !certificate.isEmpty else { return false }
+
         let keychain = Keychain.shared
         keychain.signingCertificate = certificate
         keychain.signingCertificatePassword = password
+        return keychain.signingCertificate == certificate
+    }
+
+    static func synchronizeImportedCertificate() {
+        _ = activateImportedCertificate()
     }
 
     private static func saveData(_ data: Data, key: String) {
