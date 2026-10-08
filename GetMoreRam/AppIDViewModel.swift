@@ -120,7 +120,9 @@ final class AppIDViewModel: ObservableObject {
     @Published private(set) var isRefreshing = false
 
     func fetchAppIDs() async throws {
+        _ = SideStoreCertificateStore.activateImportedCertificate()
         try await DataManager.shared.model.restoreSession()
+        _ = SideStoreCertificateStore.activateImportedCertificate()
 
         guard let team = DataManager.shared.model.team,
               let session = DataManager.shared.model.session else {
@@ -166,7 +168,9 @@ final class AppIDViewModel: ObservableObject {
     }
 
     private func refreshData() async throws {
+        _ = SideStoreCertificateStore.activateImportedCertificate()
         try await DataManager.shared.model.restoreSession()
+        _ = SideStoreCertificateStore.activateImportedCertificate()
 
         guard DataManager.shared.model.team != nil,
               DataManager.shared.model.session != nil else {
