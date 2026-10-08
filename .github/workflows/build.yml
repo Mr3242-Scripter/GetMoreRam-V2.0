@@ -167,13 +167,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.package.outputs.artifact }}
-      - name: Nightly Release
-        uses: andelf/nightly-release@v1
+      - name: Update Nightly Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with: 
-          body: |
-            This is a nightly release [created automatically with GitHub Actions workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}).
-          files: |
-            ${{ needs.package.outputs.artifact }}
-            GetMoreRamUpdate.json
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT: ${{ needs.package.outputs.artifact }}
+        run: |
+          notes="This is a nightly release [created automatically with GitHub Actions workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }})."
+          if gh release view nightly --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload nightly "$ARTIFACT" GetMoreRamUpdate.json --repo "${{ github.repository }}" --clobber
+            gh release edit nightly --repo "${{ github.repository }}" --title "Nightly Release @ $(date -u +%Y%m%d)" --notes "$notes" --prerelease
+          else
+            gh release create nightly "$ARTIFACT" GetMoreRamUpdate.json --repo "${{ github.repository }}" --title "Nightly Release @ $(date -u +%Y%m%d)" --notes "$notes" --prerelease
+          fi
