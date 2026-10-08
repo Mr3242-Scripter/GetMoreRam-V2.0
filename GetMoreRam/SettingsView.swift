@@ -601,8 +601,34 @@ struct SettingsView: View {
         }
 
         isExportingSideStoreCertificate = false
-        importResultInfo = "Successfully signed in"
-        importResultShow = true
+
+        // The imported SideStore certificate is the signing identity.
+        // Refresh/Unlock still use the existing authenticated Apple API session.
+        // Restore that session here when Sign In credentials are already stored.
+        guard Keychain.shared.appleIDEmailAddress != nil,
+              Keychain.shared.appleIDPassword != nil else {
+            importResultInfo = "Successfully signed in"
+            importResultShow = true
+            return
+        }
+
+        Task { @MainActor in
+            do {
+                try await sharedModel.restoreSession()
+                if sharedModel.isLogin {
+                    email = sharedModel.account?.appleID ?? email
+                    teamId = sharedModel.team?.identifier ?? ""
+                    importResultInfo = "Successfully signed in"
+                    importResultShow = true
+                } else {
+                    importResultInfo = "Certificate imported. Sign in to Apple Developer to use Refresh and Unlock All RAM."
+                    importResultShow = true
+                }
+            } catch {
+                errorInfo = "Certificate imported, but the Apple Developer session could not be restored.\n\n\(error.detailedDescription)"
+                errorShow = true
+            }
+        }
     }
 
     func importFromSideStore() {
