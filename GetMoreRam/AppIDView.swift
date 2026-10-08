@@ -89,7 +89,7 @@ struct AppIDView: View {
 
     private func refreshButtonClicked() async {
         do {
-            try await viewModel.fetchAppIDs()
+            try await viewModel.refresh()
         } catch {
             errorInfo = error.localizedDescription
             errorShow = true
