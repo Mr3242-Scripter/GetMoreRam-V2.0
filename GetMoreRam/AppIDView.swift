@@ -76,6 +76,21 @@ struct AppIDView: View {
                     Button("Unlock All RAM") {
                         Task { await unlockAllRAMClicked() }
                     }
+
+                    if !viewModel.unlockDebugResults.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Unlock All RAM Debug")
+                                .font(.headline)
+
+                            ForEach(Array(viewModel.unlockDebugResults.enumerated()), id: \.offset) { _, line in
+                                Text(line)
+                                    .font(.system(.caption, design: .monospaced))
+                                    .textSelection(.enabled)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
                 }
             }
             .alert("Error", isPresented: $errorShow) {
