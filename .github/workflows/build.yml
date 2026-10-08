@@ -39,17 +39,37 @@ jobs:
       - name: Bump app version
         if: github.event_name != 'pull_request'
         run: |
-          current_version=$(grep -m1 'MARKETING_VERSION = ' GetMoreRam.xcodeproj/project.pbxproj | sed 's/.*MARKETING_VERSION = \([^;]*\);.*/\1/')
-          IFS='.' read -r major minor patch <<< "$current_version"
-          patch=$((patch + 1))
-          new_version="$major.$minor.$patch"
-          echo "Bumping GetMoreRam from $current_version to $new_version"
-          sed -i '' "s/MARKETING_VERSION = $current_version;/MARKETING_VERSION = $new_version;/g" GetMoreRam.xcodeproj/project.pbxproj
+          set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add GetMoreRam.xcodeproj/project.pbxproj
-          git commit -m "Bump version to $new_version [skip ci]"
-          git push
+
+          # Another workflow may have advanced main after this run checked out.
+          # Re-read the latest version and retry a rejected push instead of failing
+          # with a stale version commit.
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            current_version=$(grep -m1 'MARKETING_VERSION = ' GetMoreRam.xcodeproj/project.pbxproj | sed 's/.*MARKETING_VERSION = \([^;]*\);.*/\1/')
+            IFS='.' read -r major minor patch <<< "$current_version"
+            patch=$((patch + 1))
+            new_version="$major.$minor.$patch"
+            echo "Bumping GetMoreRam from $current_version to $new_version (attempt $attempt)"
+            sed -i '' "s/MARKETING_VERSION = $current_version;/MARKETING_VERSION = $new_version;/g" GetMoreRam.xcodeproj/project.pbxproj
+            git add GetMoreRam.xcodeproj/project.pbxproj
+            git commit -m "Bump version to $new_version [skip ci]"
+
+            if git push origin HEAD:main; then
+              echo "Version $new_version committed."
+              exit 0
+            fi
+
+            echo "Push raced with another update; retrying from latest main."
+            git reset --hard
+          done
+
+          echo "Could not publish a version bump after 5 attempts." >&2
+          exit 1
       - name: Set Scheme
         id: scheme
         run: |
