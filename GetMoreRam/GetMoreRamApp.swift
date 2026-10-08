@@ -21,8 +21,13 @@ final class AppDelegate: NSObject, ObservableObject {
         hasStarted = true
         Task {
             let sharedModel = DataManager.shared.model
+            // Activate an already-imported SideStore certificate before restoring
+            // the account/session. This keeps the existing signing identity active
+            // without changing the Refresh or Unlock API flows.
+            _ = SideStoreCertificateStore.activateImportedCertificate()
             do {
                 try await sharedModel.restoreSession()
+                _ = SideStoreCertificateStore.activateImportedCertificate()
                 if sharedModel.autoFireOnStartup && sharedModel.isLogin {
                     await autoFireOnStartup()
                 }
