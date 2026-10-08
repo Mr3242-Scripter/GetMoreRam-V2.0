@@ -82,8 +82,8 @@ struct AppIDView: View {
                             Text("Unlock All RAM Debug")
                                 .font(.headline)
 
-                            ForEach(Array(viewModel.unlockDebugResults.enumerated()), id: \.offset) { _, line in
-                                Text(line)
+                            ForEach(Array(viewModel.unlockDebugResults.enumerated()), id: \.offset) { entry in
+                                Text(entry.element)
                                     .font(.system(.caption, design: .monospaced))
                                     .textSelection(.enabled)
                                     .frame(maxWidth: .infinity, alignment: .leading)
