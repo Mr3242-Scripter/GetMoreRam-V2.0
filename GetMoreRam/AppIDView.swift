@@ -98,7 +98,7 @@ struct AppIDView: View {
 
     private func unlockAllRAMClicked() async {
         do {
-            try await viewModel.refreshAndUnlockAll()
+            try await viewModel.unlockAllRAM()
         } catch {
             errorInfo = error.localizedDescription
             errorShow = true
