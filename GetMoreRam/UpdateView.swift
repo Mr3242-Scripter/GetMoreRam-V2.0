@@ -260,6 +260,8 @@ final class AppUpdateManager: ObservableObject {
             switch self {
             case .invalidResponse:
                 return "GitHub returned an invalid response."
+            case .invalidManifest:
+                return "GitHub returned an invalid update manifest."
             case .noManifest:
                 return "No published update manifest was found."
             }
