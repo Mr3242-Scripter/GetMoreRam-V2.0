@@ -653,7 +653,7 @@ struct SettingsView: View {
                 try await sharedModel.restoreSession()
 
                 if sharedModel.isLogin {
-                    importResultInfo = "Successfully imported and restored: \(imported.email)"
+                    importResultInfo = "Successfully signed in"
                     importResultShow = true
                     email = imported.email
                     teamId = sharedModel.team?.identifier ?? ""
@@ -675,7 +675,7 @@ struct SettingsView: View {
 
                 if teams.count == 1, let team = teams.first {
                     selectTeam(team)
-                    importResultInfo = "Successfully imported and restored: \(imported.email)"
+                    importResultInfo = "Successfully signed in"
                     importResultShow = true
                 } else if !teams.isEmpty {
                     importResultInfo = "Account imported. Choose the Apple Developer team to use."
