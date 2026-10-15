@@ -93,7 +93,10 @@ final class AnisetteDataHelper
                 let formatter = DateFormatter()
                 formatter.locale = Locale(identifier: "en_US_POSIX")
                 formatter.calendar = Calendar(identifier: .gregorian)
-                formatter.timeZone = TimeZone.current
+                // Apple expects this timestamp to be UTC because the format ends in a literal Z.
+                // Using the device timezone here would label local time as UTC and can
+                // cause Apple authentication to reject otherwise valid Anisette metadata.
+                formatter.timeZone = TimeZone(secondsFromGMT: 0)
                 formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
                 let dateString = formatter.string(from: Date())
                 formattedJSON["date"] = dateString
