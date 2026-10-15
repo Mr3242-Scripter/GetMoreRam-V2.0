@@ -583,10 +583,27 @@ struct SettingsView: View {
 
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         let items = components?.queryItems ?? []
-        guard let encodedCertificate = items.first(where: { $0.name == "cert" })?.value,
-              let certificateData = Data(base64Encoded: encodedCertificate) else {
+        // Query decoding may turn Base64 '+' characters into spaces. Restore them,
+        // remove any line breaks, and tolerate omitted Base64 padding from URL callbacks.
+        guard let rawCertificate = items.first(where: { $0.name == "cert" })?.value else {
             errorInfo = "SideStore est revenu sans certificat exploitable."
             errorShow = true
+            isExportingSideStoreCertificate = false
+            return
+        }
+        var normalizedCertificate = rawCertificate
+            .replacingOccurrences(of: " ", with: "+")
+            .replacingOccurrences(of: "\\n", with: "")
+            .replacingOccurrences(of: "\\r", with: "")
+        let padding = normalizedCertificate.count % 4
+        if padding != 0 {
+            normalizedCertificate += String(repeating: "=", count: 4 - padding)
+        }
+        guard let certificateData = Data(base64Encoded: normalizedCertificate),
+              !certificateData.isEmpty else {
+            errorInfo = "SideStore returned certificate data that could not be decoded. Please retry the certificate export."
+            errorShow = true
+            isExportingSideStoreCertificate = false
             return
         }
 
