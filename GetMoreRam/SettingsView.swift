@@ -215,7 +215,7 @@ struct SettingsView: View {
             if SideStoreCertificateStore.certificate != nil,
                SideStoreCertificateStore.activateImportedCertificate() {
                 if !sharedModel.isLogin {
-                    importResultInfo = "Successfully signed in"
+                    importResultInfo = "SideStore certificate is ready. Sign in to Apple Developer to use Refresh and Unlock All RAM."
                     importResultShow = true
                 }
             }
@@ -624,7 +624,7 @@ struct SettingsView: View {
         // Restore that session here when Sign In credentials are already stored.
         guard Keychain.shared.appleIDEmailAddress != nil,
               Keychain.shared.appleIDPassword != nil else {
-            importResultInfo = "Successfully signed in"
+            importResultInfo = "Certificate imported and activated. Sign in to Apple Developer to use Refresh and Unlock All RAM."
             importResultShow = true
             return
         }
