@@ -31,7 +31,7 @@ public final class SideStoreClient: NSObject {
                 "livecontainer://livecontainer-launch" +
                 "?bundle-name=\(encodedBundleID)" +
                 "&container-folder-name=\(encodedContainer)" +
-                "&urlscheme=getmoreram%3A%2F%2Fcertificate%3Fcert%3D$(BASE64_CERT)%26password%3D$(PASSWORD)"
+                // SideStore decodes callback_template twice. Keep the nested URL encoded once\n                // after that decoding so LiveContainer receives urlscheme as a single value.\n                "&urlscheme=getmoreram%253A%252F%252Fcertificate%253Fcert%253D$(BASE64_CERT)%2526password%253D$(PASSWORD)"
         } else {
             liveContainerCallback = directCallback
         }
