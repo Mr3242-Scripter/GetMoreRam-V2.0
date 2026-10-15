@@ -121,12 +121,17 @@ final class AppIDViewModel: ObservableObject {
     @Published private(set) var unlockDebugResults: [String] = []
 
     func fetchAppIDs() async throws {
-        _ = SideStoreCertificateStore.activateImportedCertificate()
-        try await DataManager.shared.model.restoreSession()
+        let model = DataManager.shared.model
+
+        // Keep an existing Apple account session; restore only if one is missing.
+        if model.team == nil || model.session == nil {
+            try await model.restoreSession()
+        }
+
         _ = SideStoreCertificateStore.activateImportedCertificate()
 
-        guard let team = DataManager.shared.model.team,
-              let session = DataManager.shared.model.session else {
+        guard let team = model.team,
+              let session = model.session else {
             throw "Please Sign In or import a SideStore account first."
         }
 
@@ -172,15 +177,20 @@ final class AppIDViewModel: ObservableObject {
     }
 
     private func refreshData() async throws {
-        _ = SideStoreCertificateStore.activateImportedCertificate()
-        try await DataManager.shared.model.restoreSession()
+        let model = DataManager.shared.model
+
+        // Avoid unnecessary Apple authentication when a usable session is already loaded.
+        if model.team == nil || model.session == nil {
+            try await model.restoreSession()
+        }
+
         _ = SideStoreCertificateStore.activateImportedCertificate()
 
-        guard DataManager.shared.model.team != nil,
-              DataManager.shared.model.session != nil else {
+        guard model.team != nil, model.session != nil else {
             throw "Please Sign In or import a SideStore account first."
         }
 
+        // Ensure the imported SideStore certificate is active before refresh work.
         SideStoreCertificateStore.synchronizeImportedCertificate()
         try await fetchAppIDs()
     }
