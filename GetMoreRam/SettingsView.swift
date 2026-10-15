@@ -593,8 +593,8 @@ struct SettingsView: View {
         }
         var normalizedCertificate = rawCertificate
             .replacingOccurrences(of: " ", with: "+")
-            .replacingOccurrences(of: "\\n", with: "")
-            .replacingOccurrences(of: "\\r", with: "")
+            .replacingOccurrences(of: "\n", with: "")
+            .replacingOccurrences(of: "\r", with: "")
         let padding = normalizedCertificate.count % 4
         if padding != 0 {
             normalizedCertificate += String(repeating: "=", count: 4 - padding)
