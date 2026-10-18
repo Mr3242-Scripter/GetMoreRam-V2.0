@@ -43,6 +43,7 @@ class AppIDViewModel : ObservableObject {
     @Published var appIDs : [AppIDModel] = []
     
     func fetchAppIDs() async throws {
+        await DataManager.shared.model.ensureSession()
         guard let team = DataManager.shared.model.team, let session = DataManager.shared.model.session else {
             throw "Please Login First"
         }
