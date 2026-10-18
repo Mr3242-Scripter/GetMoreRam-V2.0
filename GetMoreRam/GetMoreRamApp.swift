@@ -25,16 +25,11 @@ class AppDelegate: NSObject, ObservableObject {
     func performStartupTasks() {
         let sharedModel = DataManager.shared.model
         
-        // Restore login state from Keychain
-        if let email = Keychain.shared.appleIDEmailAddress,
-           let password = Keychain.shared.appleIDPassword {
-            // Login info is available, user was previously logged in
-            // We'll restore the session when they navigate to settings
-        }
-        
-        // Check if auto-fire on startup is enabled
-        if sharedModel.autoFireOnStartup && sharedModel.isLogin {
-            Task {
+        // Restore the saved Apple session, then run auto-fire if enabled
+        Task {
+            await sharedModel.ensureSession()
+            
+            if sharedModel.autoFireOnStartup && sharedModel.isLogin {
                 await autoFireOnStartup()
             }
         }
