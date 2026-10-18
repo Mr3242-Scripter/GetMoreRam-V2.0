@@ -22,6 +22,11 @@ struct SettingsView: View {
     @State private var importResultShow = false
     @State private var importResultInfo = ""
     @State private var isImportingSideStoreAccount = false
+    @State private var showSideStoreFilePicker = false
+    @State private var pendingSideStoreFile: Data?
+    @State private var showSideStorePasswordPrompt = false
+    @State private var sideStoreFilePassword = ""
+    @State private var sideStorePasswordMessage = "Enter the password you chose when exporting the account from SideStore."
     @State private var showAppNameEditor = false
     @State private var showAppIconEditor = false
     @State private var newAppName = ""
@@ -48,11 +53,19 @@ struct SettingsView: View {
                     }
 
                     Button("Import from SideStore") {
-                        importFromSideStore()
+                        showSideStoreFilePicker = true
                     }
                 }
             } header: {
                 Text("Account")
+            } footer: {
+                if !sharedModel.isLogin {
+                    if sharedModel.sessionRestoreFailed, !email.isEmpty {
+                        Text("Your saved session expired. Tap Sign in to log in again.")
+                    } else {
+                        Text("To import from SideStore: open SideStore > Settings > Advanced > Backup & Restore > Export Account (tick \"Include Account Password\"), then pick the exported file here.")
+                    }
+                }
             }
 
             Section {
@@ -120,6 +133,25 @@ struct SettingsView: View {
         } message: {
             Text(errorInfo)
         }
+        .fileImporter(
+            isPresented: $showSideStoreFilePicker,
+            allowedContentTypes: [.data],
+            allowsMultipleSelection: false
+        ) { result in
+            handleSideStoreFilePicked(result)
+        }
+        .alert("File Password", isPresented: $showSideStorePasswordPrompt) {
+            SecureField("File Password", text: $sideStoreFilePassword)
+            Button("Import") {
+                importSideStoreFile(password: sideStoreFilePassword)
+            }
+            Button("Cancel", role: .cancel) {
+                pendingSideStoreFile = nil
+                sideStoreFilePassword = ""
+            }
+        } message: {
+            Text(sideStorePasswordMessage)
+        }
         .alert("Import Success", isPresented: $importResultShow) {
             Button("OK".loc) {}
         } message: {
@@ -141,6 +173,9 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showAppIconEditor) {
             appIconEditorSheet
+        }
+        .onChange(of: sharedModel.isLogin) { _ in
+            refreshAccountLabels()
         }
         .onAppear {
             if sharedModel.isLogin {
@@ -446,6 +481,7 @@ struct SettingsView: View {
         Keychain.shared.identifier = nil
         Keychain.shared.appleIDPassword = nil
         Keychain.shared.appleIDEmailAddress = nil
+        Keychain.shared.clearSession()
 
         AnisetteDataHelper.shared.resetClientInfo()
 
@@ -461,37 +497,57 @@ struct SettingsView: View {
         teamId = ""
     }
 
-    func importFromSideStore() {
-        let sideStoreURL = URL(
-            string: "sidestore://import-account"
-        )!
-
-        if UIApplication.shared.canOpenURL(sideStoreURL) {
-            UIApplication.shared.open(sideStoreURL) { success in
-                if success {
-                    DispatchQueue.main.asyncAfter(
-                        deadline: .now() + 0.5
-                    ) {
-                        handleSideStoreReturn()
-                    }
-                }
-            }
-        } else {
-            errorInfo =
-                "SideStore is not installed. Please install SideStore first."
-            errorShow = true
+    func refreshAccountLabels() {
+        if sharedModel.isLogin {
+            email = sharedModel.account?.appleID ?? email
+            teamId = sharedModel.team?.identifier ?? teamId
+        } else if let savedEmail = Keychain.shared.appleIDEmailAddress {
+            email = savedEmail
         }
     }
 
-    func handleSideStoreReturn() {
-        if let email = Keychain.shared.appleIDEmailAddress,
-           Keychain.shared.appleIDPassword != nil {
+    func handleSideStoreFilePicked(_ result: Result<[URL], Error>) {
+        switch result {
+        case .failure(let error):
+            errorInfo = error.localizedDescription
+            errorShow = true
 
-            importResultInfo =
-                "Successfully imported account from SideStore: \(email)"
+        case .success(let urls):
+            guard let url = urls.first else { return }
 
-            importResultShow = true
-            self.email = email
+            let didAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if didAccess { url.stopAccessingSecurityScopedResource() }
+            }
+
+            guard let data = try? Data(contentsOf: url) else {
+                errorInfo = SideStoreImportError.unreadableFile.localizedDescription
+                errorShow = true
+                return
+            }
+
+            if SideStoreImporter.isPlainJSON(data) {
+                pendingSideStoreFile = data
+                importSideStoreFile(password: nil)
+            } else {
+                // Encrypted export: ask for the file password
+                pendingSideStoreFile = data
+                sideStoreFilePassword = ""
+                sideStorePasswordMessage = "Enter the password you chose when exporting the account from SideStore."
+                showSideStorePasswordPrompt = true
+            }
+        }
+    }
+
+    func importSideStoreFile(password: String?) {
+        guard let data = pendingSideStoreFile else { return }
+
+        do {
+            let account = try SideStoreImporter.parse(data, filePassword: password)
+            SideStoreImporter.apply(account)
+
+            pendingSideStoreFile = nil
+            sideStoreFilePassword = ""
 
             sharedModel.session = nil
             sharedModel.account = nil
@@ -500,15 +556,31 @@ struct SettingsView: View {
 
             viewModel.availableTeams = []
             viewModel.teamSelectionShow = false
-        } else {
-            errorInfo =
-                "Failed to import account from SideStore."
-            errorShow = true
+
+            email = account.email
+
+            // Open the sign-in sheet with the imported credentials filled in
+            // (it asks for the Apple ID password if the file did not include it).
+            viewModel.appleID = account.email
+            viewModel.password = account.password ?? ""
+            viewModel.loginModalShow = true
+        } catch {
+            if case SideStoreImportError.wrongPassword = error, password != nil {
+                // Let the user retry with another password
+                sideStoreFilePassword = ""
+                sideStorePasswordMessage = "Wrong password. Try again."
+                showSideStorePasswordPrompt = true
+            } else {
+                pendingSideStoreFile = nil
+                errorInfo = error.localizedDescription
+                errorShow = true
+            }
         }
     }
 
     func selectTeam(_ team: Team) {
         sharedModel.team = team
+        Keychain.shared.sessionTeamID = team.identifier
         sharedModel.isLogin = true
 
         email = sharedModel.account?.appleID ?? email
