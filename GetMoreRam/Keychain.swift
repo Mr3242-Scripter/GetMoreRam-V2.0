@@ -81,8 +81,29 @@ public class Keychain
     @KeychainItem(key: "adiPb")
     public var adiPb: String?
     
+    // Saved Apple developer session, so the app can restore it after a restart
+    @KeychainItem(key: "sessionDSID")
+    public var sessionDSID: String?
+    
+    @KeychainItem(key: "sessionAuthTokens")
+    public var sessionAuthTokens: Data?
+    
+    @KeychainItem(key: "sessionAccount")
+    public var sessionAccount: Data?
+    
+    @KeychainItem(key: "sessionTeamID")
+    public var sessionTeamID: String?
+    
     private init()
     {
+    }
+    
+    public func clearSession()
+    {
+        self.sessionDSID = nil
+        self.sessionAuthTokens = nil
+        self.sessionAccount = nil
+        self.sessionTeamID = nil
     }
     
     public func reset()
