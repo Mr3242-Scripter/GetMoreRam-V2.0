@@ -98,6 +98,7 @@ class LoginViewModel: ObservableObject {
             DataManager.shared.model.session = session
             Keychain.shared.appleIDEmailAddress = appleID
             Keychain.shared.appleIDPassword = password
+            DataManager.shared.model.persistSession(session, account: account)
 
             let teams = try await fetchTeams(for: account, session: session)
             logging(text: "Successfully fetched teams")
