@@ -68,12 +68,16 @@ final class AnisetteDataHelper
                 if json["result"] == "GetHeadersError" {
                     let message = json["message"]
                     self.printOut("Error getting V3 headers: \(message ?? "no message")")
-                    if let message = message,
-                       message.contains("-45061") {
-                        self.printOut("Error message contains -45061 (not provisioned), resetting adi.pb and retrying")
-                        Keychain.shared.adiPb = nil
-                        return try await provision()
-                    } else { throw message ?? "Unknown error" }
+                    if let message = message {
+                        let lower = message.lowercased()
+                        if lower.contains("-45061") || lower.contains("-80045") || lower.contains("503")
+                            || lower.contains("not provisioned") || lower.contains("could not connect") {
+                            self.printOut("Auth/ADI error — resetting adi.pb and retrying: \(message)")
+                            Keychain.shared.adiPb = nil
+                            return try await provision()
+                        }
+                        throw message
+                    } else { throw "Unknown error" }
                 }
             }
             
@@ -348,10 +352,11 @@ final class AnisetteDataHelper
             return
         }
         
-        self.printOut("Using custom client_info")
+        // SideInstaller temporary fix: Windows ADI + akd (Apple rejects Mac/Xcode identity)
+        self.printOut("Using Windows GSA client_info (SideInstaller parity)")
                         
-        self.clientInfo = "<iMac18,3> <macOS;27.0;26A5378j> <com.apple.AuthKit/1 (com.apple.akd/1.0)>"
-        self.userAgent = "AuthKit/1 (Macintosh; OS X 27.0) (com.apple.akd/1.0)"
+        self.clientInfo = "<PC> <Windows;6.2(0,0);9200> <com.apple.AuthKit/1 (com.apple.iTunes/12.12.4.1)>"
+        self.userAgent = "akd/1.0 CFNetwork/808.1.4"
         self.printOut("Client-Info: \(self.clientInfo!)")
         self.printOut("User-Agent: \(self.userAgent!)")
         
