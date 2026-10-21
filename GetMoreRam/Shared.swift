@@ -72,7 +72,7 @@ class SharedModel: ObservableObject {
     @Published var appDisplayName = "More Ram!"
     @Published var appIconData: UIImage? = nil
     
-    @AppStorage("AnisetteServer") var anisetteServerURL = "https://nythepegasus.com"
+    @AppStorage("AnisetteServer") var anisetteServerURL = "https://ani.npeg.us"
     @AppStorage("AutoFireOnStartup") var autoFireOnStartup = false
     @AppStorage("CustomAppName") var customAppName = "More Ram!"
     @AppStorage("CustomAppIconURL") var customAppIconURL = ""
