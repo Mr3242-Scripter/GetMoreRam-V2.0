@@ -29,6 +29,10 @@ struct SettingsView: View {
     @State private var showAppIconEditor = false
     @State private var newAppName = ""
     @State private var newAppIconURL = ""
+    @State private var draftClientInfo = ""
+    @State private var draftUserAgent = ""
+    @State private var anisetteSaveMessage = ""
+    @State private var showAnisetteSaveAlert = false
 
     var body: some View {
         Form {
@@ -73,12 +77,49 @@ struct SettingsView: View {
 
                     TextField("", text: $sharedModel.anisetteServerURL)
                         .multilineTextAlignment(.trailing)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
                 }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Client Info")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    TextField("Client Info", text: $draftClientInfo, axis: .vertical)
+                        .lineLimit(2...4)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .font(.system(.footnote, design: .monospaced))
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("User Agent")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    TextField("User Agent", text: $draftUserAgent, axis: .vertical)
+                        .lineLimit(1...3)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .font(.system(.footnote, design: .monospaced))
+                }
+
+                Button("Save") {
+                    saveAnisetteHeaders()
+                }
+
+                Button("Reset to Default") {
+                    resetAnisetteHeaders()
+                }
+                .foregroundStyle(.secondary)
 
                 Toggle(
                     "Auto Fire on Startup",
                     isOn: $sharedModel.autoFireOnStartup
                 )
+            } header: {
+                Text("Anisette")
+            } footer: {
+                Text("Client Info and User Agent must not be empty. Defaults match SideStore Mac ADI.")
             }
 
             Section {
@@ -181,6 +222,17 @@ struct SettingsView: View {
                     email = savedEmail
                 }
             }
+            if draftClientInfo.isEmpty {
+                draftClientInfo = sharedModel.anisetteClientInfo
+            }
+            if draftUserAgent.isEmpty {
+                draftUserAgent = sharedModel.anisetteUA
+            }
+        }
+        .alert("Anisette", isPresented: $showAnisetteSaveAlert) {
+            Button("OK".loc) {}
+        } message: {
+            Text(anisetteSaveMessage)
         }
     }
 
@@ -520,7 +572,6 @@ struct SettingsView: View {
             }
 
             pendingSideStoreFile = data
-            // Try plain JSON first; if encrypted the import will ask for password
             importSideStoreFile(password: nil)
         }
     }
@@ -529,11 +580,6 @@ struct SettingsView: View {
         guard let data = pendingSideStoreFile else { return }
 
         do {
-            // Prefer SideStoreImporter if present; fall back to basic keychain fill
-            if let importer = NSClassFromString("SideStoreImporter") {
-                // Keep existing importer path when available
-            }
-            // Minimal path: store email/password if present in plain JSON
             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let emailValue = json["email"] as? String {
                 Keychain.shared.appleIDEmailAddress = emailValue
@@ -554,7 +600,6 @@ struct SettingsView: View {
                 pendingSideStoreFile = nil
                 return
             }
-            // Encrypted – prompt for password
             if password == nil || password?.isEmpty == true {
                 sideStoreFilePassword = ""
                 showSideStorePasswordPrompt = true
@@ -566,6 +611,34 @@ struct SettingsView: View {
             errorInfo = error.localizedDescription
             errorShow = true
         }
+    }
+
+    func saveAnisetteHeaders() {
+        let client = draftClientInfo.trimmingCharacters(in: .whitespacesAndNewlines)
+        let ua = draftUserAgent.trimmingCharacters(in: .whitespacesAndNewlines)
+        if client.isEmpty || ua.isEmpty {
+            anisetteSaveMessage = "Client Info and User Agent cannot be empty."
+            showAnisetteSaveAlert = true
+            return
+        }
+        sharedModel.anisetteClientInfo = client
+        sharedModel.anisetteUA = ua
+        draftClientInfo = client
+        draftUserAgent = ua
+        anisetteSaveMessage = "Saved Client Info and User Agent."
+        showAnisetteSaveAlert = true
+    }
+
+    func resetAnisetteHeaders() {
+        draftClientInfo = AnisetteDefaults.macClientInfo
+        draftUserAgent = AnisetteDefaults.macUserAgent
+        sharedModel.anisetteClientInfo = AnisetteDefaults.macClientInfo
+        sharedModel.anisetteUA = AnisetteDefaults.macUserAgent
+        if sharedModel.anisetteServerURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            sharedModel.anisetteServerURL = AnisetteDefaults.fallbackServerURL
+        }
+        anisetteSaveMessage = "Reset Client Info and User Agent to SideStore Mac ADI defaults."
+        showAnisetteSaveAlert = true
     }
 
     func selectTeam(_ team: Team) {
