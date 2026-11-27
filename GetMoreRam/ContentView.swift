@@ -14,19 +14,18 @@ struct ContentView: View {
                 .tabItem {
                     Label("App IDs".loc, systemImage: "square.stack.3d.up.fill")
                 }
+
+            UpdateView()
+                .tabItem {
+                    Label("Updates", systemImage: "arrow.down.circle")
+                }
+
             SettingsView(viewModel: LoginViewModel())
                 .tabItem {
                     Label("Settings".loc, systemImage: "gearshape.fill")
                 }
         }
-
         .environmentObject(DataManager.shared.model)
-        
-
-    }
-    
-    func test() {
-        
     }
 }
 
