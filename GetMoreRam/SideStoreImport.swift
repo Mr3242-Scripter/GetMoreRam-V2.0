@@ -100,7 +100,6 @@ enum SideStoreImporter {
         Keychain.shared.adiPb = account.anisetteAdiBlob
         // A different account means the saved developer session no longer applies
         Keychain.shared.clearSession()
-        AnisetteDataHelper.shared.resetClientInfo()
     }
     
     // MARK: - Encrypted format: salt(16) | nonce(12) | ciphertext | tag(16)
