@@ -581,7 +581,6 @@ struct SettingsView: View {
     func importSideStoreFile(password: String?) {
         guard let data = pendingSideStoreFile else { return }
 
-        // Encrypted SideStore exports need a file password first.
         if !SideStoreImporter.isPlainJSON(data), password == nil || password?.isEmpty == true {
             sideStoreFilePassword = ""
             showSideStorePasswordPrompt = true
@@ -596,6 +595,7 @@ struct SettingsView: View {
             }
             Keychain.shared.adiPb = account.anisetteAdiBlob
             Keychain.shared.identifier = account.anisetteIdentifier
+            AnisetteDataHelper.shared.resetClientInfo()
 
             email = account.email
             viewModel.appleID = account.email
