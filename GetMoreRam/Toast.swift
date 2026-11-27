@@ -270,19 +270,22 @@ class ToastView: UIControl
         hiddenAxisConstraint?.isActive = false
         axisConstraint?.isActive = true
 
-        let timingParameters = UISpringTimingParameters(stiffness: 750.0, dampingRatio: 1.0)
-        let animator = UIViewPropertyAnimator(springTimingParameters: timingParameters, animations: {
-            view.layoutIfNeeded()
-        })
-        animator.addCompletion { [weak self] position in
-            guard let self = self else { return }
-            if position == .end {
+        NotificationCenter.default.post(name: ToastView.willShowNotification, object: self)
+
+        UIView.animate(
+            withDuration: 0.45,
+            delay: 0,
+            usingSpringWithDamping: 1.0,
+            initialSpringVelocity: 0,
+            options: [.allowUserInteraction, .beginFromCurrentState],
+            animations: {
+                view.layoutIfNeeded()
+            },
+            completion: { [weak self] finished in
+                guard let self = self, finished else { return }
                 NotificationCenter.default.post(name: ToastView.didShowNotification, object: self)
             }
-        }
-        animator.startAnimation()
-
-        NotificationCenter.default.post(name: ToastView.willShowNotification, object: self, userInfo: [ToastView.userInfoKeyPropertyAnimator: animator])
+        )
 
         let announcement = (self.textLabel.text ?? "") + ". " + (self.detailTextLabel.text ?? "")
         self.accessibilityLabel = announcement
@@ -304,25 +307,26 @@ class ToastView: UIControl
             hiddenAxisConstraint?.isActive = true
         }
 
-        let timingParameters = UISpringTimingParameters(stiffness: 750.0, dampingRatio: 1.0)
-        let animator = UIViewPropertyAnimator(springTimingParameters: timingParameters, animations: {
-            self.superview?.layoutIfNeeded()
-        })
-        animator.addCompletion { [weak self] position in
-            guard let self = self else { return }
-            if position != .end { return }
+        NotificationCenter.default.post(name: ToastView.willDismissNotification, object: self)
 
-            self.removeFromSuperview()
-
-            self.axisConstraint = nil
-            self.hiddenAxisConstraint = nil
-            self.alignmentConstraint = nil
-
-            NotificationCenter.default.post(name: ToastView.didDismissNotification, object: self)
-        }
-        animator.startAnimation()
-
-        NotificationCenter.default.post(name: ToastView.willDismissNotification, object: self, userInfo: [ToastView.userInfoKeyPropertyAnimator: animator])
+        UIView.animate(
+            withDuration: 0.35,
+            delay: 0,
+            usingSpringWithDamping: 1.0,
+            initialSpringVelocity: 0,
+            options: [.allowUserInteraction, .beginFromCurrentState],
+            animations: {
+                self.superview?.layoutIfNeeded()
+            },
+            completion: { [weak self] finished in
+                guard let self = self, finished else { return }
+                self.removeFromSuperview()
+                self.axisConstraint = nil
+                self.hiddenAxisConstraint = nil
+                self.alignmentConstraint = nil
+                NotificationCenter.default.post(name: ToastView.didDismissNotification, object: self)
+            }
+        )
     }
 
     @objc private func toastViewWillShow(_ notification: Notification) {
