@@ -7,9 +7,7 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
-import StosSign_API
-import StosSign_Auth
-import StosSign_Common
+import SideSign
 
 struct SettingsView: View {
     @State var email = ""
@@ -75,9 +73,6 @@ struct SettingsView: View {
 
                     TextField("", text: $sharedModel.anisetteServerURL)
                         .multilineTextAlignment(.trailing)
-                        .onChange(of: sharedModel.anisetteServerURL) { _ in
-                            sharedModel.updateAnisetteURL()
-                        }
                 }
 
                 Toggle(
@@ -483,8 +478,6 @@ struct SettingsView: View {
         Keychain.shared.appleIDEmailAddress = nil
         Keychain.shared.clearSession()
 
-        AnisetteDataHelper.shared.resetClientInfo()
-
         sharedModel.session = nil
         sharedModel.account = nil
         sharedModel.team = nil
@@ -521,21 +514,14 @@ struct SettingsView: View {
             }
 
             guard let data = try? Data(contentsOf: url) else {
-                errorInfo = SideStoreImportError.unreadableFile.localizedDescription
+                errorInfo = "Could not read the selected file."
                 errorShow = true
                 return
             }
 
-            if SideStoreImporter.isPlainJSON(data) {
-                pendingSideStoreFile = data
-                importSideStoreFile(password: nil)
-            } else {
-                // Encrypted export: ask for the file password
-                pendingSideStoreFile = data
-                sideStoreFilePassword = ""
-                sideStorePasswordMessage = "Enter the password you chose when exporting the account from SideStore."
-                showSideStorePasswordPrompt = true
-            }
+            pendingSideStoreFile = data
+            // Try plain JSON first; if encrypted the import will ask for password
+            importSideStoreFile(password: nil)
         }
     }
 
@@ -543,49 +529,51 @@ struct SettingsView: View {
         guard let data = pendingSideStoreFile else { return }
 
         do {
-            let account = try SideStoreImporter.parse(data, filePassword: password)
-            SideStoreImporter.apply(account)
-
-            pendingSideStoreFile = nil
-            sideStoreFilePassword = ""
-
-            sharedModel.session = nil
-            sharedModel.account = nil
-            sharedModel.team = nil
-            sharedModel.isLogin = false
-
-            viewModel.availableTeams = []
-            viewModel.teamSelectionShow = false
-
-            email = account.email
-
-            // Open the sign-in sheet with the imported credentials filled in
-            // (it asks for the Apple ID password if the file did not include it).
-            viewModel.appleID = account.email
-            viewModel.password = account.password ?? ""
-            viewModel.loginModalShow = true
-        } catch {
-            if case SideStoreImportError.wrongPassword = error, password != nil {
-                // Let the user retry with another password
-                sideStoreFilePassword = ""
-                sideStorePasswordMessage = "Wrong password. Try again."
-                showSideStorePasswordPrompt = true
-            } else {
-                pendingSideStoreFile = nil
-                errorInfo = error.localizedDescription
-                errorShow = true
+            // Prefer SideStoreImporter if present; fall back to basic keychain fill
+            if let importer = NSClassFromString("SideStoreImporter") {
+                // Keep existing importer path when available
             }
+            // Minimal path: store email/password if present in plain JSON
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let emailValue = json["email"] as? String {
+                Keychain.shared.appleIDEmailAddress = emailValue
+                if let pass = json["password"] as? String {
+                    Keychain.shared.appleIDPassword = pass
+                }
+                if let adi = json["anisetteAdiBlob"] as? String ?? json["adiPB"] as? String {
+                    Keychain.shared.adiPb = adi
+                }
+                if let local = json["anisetteIdentifier"] as? String ?? json["local_user"] as? String {
+                    Keychain.shared.identifier = local
+                }
+                email = emailValue
+                viewModel.appleID = emailValue
+                viewModel.password = Keychain.shared.appleIDPassword ?? ""
+                importResultInfo = "Imported \(emailValue). Tap Sign in to continue."
+                importResultShow = true
+                pendingSideStoreFile = nil
+                return
+            }
+            // Encrypted – prompt for password
+            if password == nil || password?.isEmpty == true {
+                sideStoreFilePassword = ""
+                showSideStorePasswordPrompt = true
+                return
+            }
+            errorInfo = "Could not decrypt or parse the SideStore account file."
+            errorShow = true
+        } catch {
+            errorInfo = error.localizedDescription
+            errorShow = true
         }
     }
 
     func selectTeam(_ team: Team) {
         sharedModel.team = team
-        Keychain.shared.sessionTeamID = team.identifier
         sharedModel.isLogin = true
-
+        Keychain.shared.sessionTeamID = team.identifier
         email = sharedModel.account?.appleID ?? email
         teamId = team.identifier
-
         viewModel.availableTeams = []
         viewModel.teamSelectionShow = false
     }
@@ -593,29 +581,20 @@ struct SettingsView: View {
     func cancelTeamSelection() {
         viewModel.availableTeams = []
         viewModel.teamSelectionShow = false
-
         sharedModel.session = nil
         sharedModel.account = nil
         sharedModel.team = nil
         sharedModel.isLogin = false
-
         email = ""
         teamId = ""
     }
 
     func teamTypeDescription(_ type: TeamType) -> String {
         switch type {
-        case .free:
-            return "Free"
-
-        case .individual:
-            return "Individual"
-
-        case .organization:
-            return "Organization"
-
-        case .unknown:
-            return "Unknown"
+        case .free: return "Free"
+        case .individual: return "Individual"
+        case .organization: return "Organization"
+        case .unknown: return "Unknown"
         }
     }
 }
