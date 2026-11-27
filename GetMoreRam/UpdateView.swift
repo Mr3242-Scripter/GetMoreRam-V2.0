@@ -2,10 +2,68 @@
 //  UpdateView.swift
 //  GetMoreRam
 //
-//  Checks GitHub Releases for Mr3242-Scripter/GetMoreRam-V2.0 and offers download.
+//  Checks GitHub Releases. Update path depends on install environment:
+//  - LiveContainer guest: download IPA and hand it to LiveContainer
+//  - Normal (SideStore/AltStore): open sidestore://install?url=
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
+
+enum InstallEnvironment: String {
+    case liveContainer = "LiveContainer"
+    case sideStore = "SideStore"
+    case unknown = "Standard"
+
+    var updateButtonTitle: String {
+        switch self {
+        case .liveContainer: return "Update in LiveContainer"
+        case .sideStore: return "Update with SideStore"
+        case .unknown: return "Download Update"
+        }
+    }
+
+    var footer: String {
+        switch self {
+        case .liveContainer:
+            return "Running inside LiveContainer. The IPA will be downloaded and opened so LiveContainer can replace this app."
+        case .sideStore:
+            return "Installed normally. SideStore will be opened with sidestore://install to install the new IPA."
+        case .unknown:
+            return "Could not detect SideStore or LiveContainer. You can still open the release or download the IPA."
+        }
+    }
+}
+
+enum InstallEnvironmentDetector {
+    /// LiveContainer sets LC_HOME_PATH for guest processes.
+    static var isLiveContainer: Bool {
+        if getenv("LC_HOME_PATH") != nil { return true }
+        // Fallback: bundle / home path often contains LiveContainer
+        let home = NSHomeDirectory()
+        if home.contains("LiveContainer") { return true }
+        if Bundle.main.bundlePath.contains("LiveContainer") { return true }
+        return false
+    }
+
+    static var canOpenSideStore: Bool {
+        UIApplication.shared.canOpenURL(URL(string: "sidestore://")!)
+    }
+
+    static var canOpenAltStore: Bool {
+        UIApplication.shared.canOpenURL(URL(string: "altstore://")!)
+    }
+
+    static var canOpenLiveContainer: Bool {
+        UIApplication.shared.canOpenURL(URL(string: "livecontainer://")!)
+    }
+
+    static var current: InstallEnvironment {
+        if isLiveContainer { return .liveContainer }
+        if canOpenSideStore { return .sideStore }
+        return .unknown
+    }
+}
 
 struct GitHubRelease: Decodable, Identifiable {
     let id: Int
@@ -29,13 +87,17 @@ struct GitHubRelease: Decodable, Identifiable {
         return tagName
     }
 
-    /// Prefer an .ipa asset; fall back to the release page.
+    var ipaAsset: GitHubAsset? {
+        assets.first { $0.name.lowercased().hasSuffix(".ipa") }
+    }
+
+    var ipaDownloadURL: URL? {
+        guard let ipa = ipaAsset else { return nil }
+        return URL(string: ipa.browserDownloadURL)
+    }
+
     var preferredDownloadURL: URL? {
-        if let ipa = assets.first(where: { $0.name.lowercased().hasSuffix(".ipa") }),
-           let url = URL(string: ipa.browserDownloadURL) {
-            return url
-        }
-        return URL(string: htmlURL)
+        ipaDownloadURL ?? URL(string: htmlURL)
     }
 }
 
@@ -54,12 +116,14 @@ struct GitHubAsset: Decodable, Identifiable {
 @MainActor
 final class UpdateViewModel: ObservableObject {
     @Published var isChecking = false
+    @Published var isUpdating = false
+    @Published var downloadProgress: Double?
     @Published var latest: GitHubRelease?
     @Published var statusMessage = ""
     @Published var errorMessage: String?
     @Published var updateAvailable = false
+    @Published var environment: InstallEnvironment = InstallEnvironmentDetector.current
 
-    /// GitHub repo that publishes releases for this app.
     static let owner = "Mr3242-Scripter"
     static let repo = "GetMoreRam-V2.0"
 
@@ -73,10 +137,15 @@ final class UpdateViewModel: ObservableObject {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
     }
 
+    func refreshEnvironment() {
+        environment = InstallEnvironmentDetector.current
+    }
+
     func checkForUpdates() async {
         isChecking = true
         errorMessage = nil
         statusMessage = "Checking for updates…"
+        refreshEnvironment()
         defer { isChecking = false }
 
         let urlString = "https://api.github.com/repos/\(Self.owner)/\(Self.repo)/releases/latest"
@@ -95,7 +164,6 @@ final class UpdateViewModel: ObservableObject {
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
 
             if status == 404 {
-                // No releases yet — try listing releases (may only have nightlies)
                 try await checkFromReleaseList()
                 return
             }
@@ -107,8 +175,7 @@ final class UpdateViewModel: ObservableObject {
                 return
             }
 
-            let decoder = JSONDecoder()
-            let release = try decoder.decode(GitHubRelease.self, from: data)
+            let release = try JSONDecoder().decode(GitHubRelease.self, from: data)
             apply(release: release)
         } catch {
             errorMessage = error.localizedDescription
@@ -159,11 +226,9 @@ final class UpdateViewModel: ObservableObject {
         }
     }
 
-    /// Strip leading "v" and compare dotted numeric segments.
     private func normalizedVersion(_ raw: String) -> [Int] {
         var s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if s.lowercased().hasPrefix("v") { s = String(s.dropFirst()) }
-        // drop build suffix after + or -
         if let plus = s.firstIndex(of: "+") { s = String(s[..<plus]) }
         if let dash = s.firstIndex(of: "-") { s = String(s[..<dash]) }
         return s.split(separator: ".").map { Int($0) ?? 0 }
@@ -180,12 +245,182 @@ final class UpdateViewModel: ObservableObject {
         return false
     }
 
-    func openDownload() {
-        guard let url = latest?.preferredDownloadURL else {
-            ToastView.present(text: "No download URL", detailText: "Open the release page from the button below.")
+    // MARK: - Perform update
+
+    func performUpdate() async {
+        guard let latest else {
+            ToastView.present(text: "Check for updates first")
             return
         }
-        UIApplication.shared.open(url)
+
+        refreshEnvironment()
+        isUpdating = true
+        downloadProgress = nil
+        defer {
+            isUpdating = false
+            downloadProgress = nil
+        }
+
+        switch environment {
+        case .liveContainer:
+            await updateViaLiveContainer(release: latest)
+        case .sideStore:
+            await updateViaSideStore(release: latest)
+        case .unknown:
+            // Prefer SideStore scheme if somehow available; else open IPA / release page
+            if InstallEnvironmentDetector.canOpenSideStore {
+                await updateViaSideStore(release: latest)
+            } else if InstallEnvironmentDetector.canOpenLiveContainer {
+                await updateViaLiveContainer(release: latest)
+            } else {
+                openDownloadFallback(release: latest)
+            }
+        }
+    }
+
+    /// Normal install: hand the remote IPA URL to SideStore (or AltStore).
+    private func updateViaSideStore(release: GitHubRelease) async {
+        guard let ipaURL = release.ipaDownloadURL else {
+            statusMessage = "No .ipa asset on this release. Opening release page."
+            openReleasePage()
+            ToastView.present(text: "No IPA on release", detailText: "Open the release and install manually.")
+            return
+        }
+
+        let encoded = ipaURL.absoluteString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ipaURL.absoluteString
+
+        if let side = URL(string: "sidestore://install?url=\(encoded)"),
+           UIApplication.shared.canOpenURL(URL(string: "sidestore://")!) {
+            statusMessage = "Opening SideStore…"
+            UIApplication.shared.open(side)
+            ToastView.present(text: "Opening SideStore", detailText: "Confirm the install when SideStore appears.")
+            return
+        }
+
+        if let alt = URL(string: "altstore://install?url=\(encoded)"),
+           UIApplication.shared.canOpenURL(URL(string: "altstore://")!) {
+            statusMessage = "Opening AltStore…"
+            UIApplication.shared.open(alt)
+            ToastView.present(text: "Opening AltStore", detailText: "Confirm the install when AltStore appears.")
+            return
+        }
+
+        // SideStore not installed / scheme blocked — open IPA URL as last resort
+        statusMessage = "SideStore not available. Opening IPA link."
+        UIApplication.shared.open(ipaURL)
+        ToastView.present(text: "SideStore not found", detailText: "Opened the IPA download instead.")
+    }
+
+    /// LiveContainer guest: download IPA into shared temp, then open LiveContainer install flow.
+    private func updateViaLiveContainer(release: GitHubRelease) async {
+        guard let ipaURL = release.ipaDownloadURL else {
+            statusMessage = "No .ipa asset on this release. Opening release page."
+            openReleasePage()
+            ToastView.present(text: "No IPA on release", detailText: "Import the IPA in LiveContainer manually.")
+            return
+        }
+
+        statusMessage = "Downloading IPA for LiveContainer…"
+        ToastView.present(text: "Downloading update…")
+
+        do {
+            let localIPA = try await downloadIPA(from: ipaURL)
+            statusMessage = "Opening LiveContainer…"
+
+            // Prefer handing the remote URL to LiveContainer so it can install from network.
+            let encodedRemote = ipaURL.absoluteString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ipaURL.absoluteString
+            if let lcInstall = URL(string: "livecontainer://install?url=\(encodedRemote)"),
+               UIApplication.shared.canOpenURL(URL(string: "livecontainer://")!) {
+                UIApplication.shared.open(lcInstall)
+                ToastView.present(text: "Opening LiveContainer", detailText: "Confirm install / restart when prompted.")
+                return
+            }
+
+            // Fallback: open the downloaded file (share sheet / document interaction)
+            await openLocalFile(localIPA)
+            ToastView.present(text: "IPA ready", detailText: "Choose LiveContainer to import the update.")
+        } catch {
+            errorMessage = error.localizedDescription
+            statusMessage = "Download failed."
+            ToastView.presentError(error)
+        }
+    }
+
+    private func downloadIPA(from url: URL) async throws -> URL {
+        let (asyncBytes, response) = try await URLSession.shared.bytes(from: url)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200..<300).contains(status) else {
+            throw NSError(domain: "Update", code: status, userInfo: [NSLocalizedDescriptionKey: "Download failed (HTTP \(status))"])
+        }
+
+        let total = response.expectedContentLength
+        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        let dest = caches.appendingPathComponent("GetMoreRam-update.ipa")
+        if FileManager.default.fileExists(atPath: dest.path) {
+            try? FileManager.default.removeItem(at: dest)
+        }
+        FileManager.default.createFile(atPath: dest.path, contents: nil)
+        let handle = try FileHandle(forWritingTo: dest)
+        defer { try? handle.close() }
+
+        var received: Int64 = 0
+        var buffer = Data()
+        buffer.reserveCapacity(64 * 1024)
+
+        for try await byte in asyncBytes {
+            buffer.append(byte)
+            if buffer.count >= 64 * 1024 {
+                try handle.write(contentsOf: buffer)
+                received += Int64(buffer.count)
+                buffer.removeAll(keepingCapacity: true)
+                if total > 0 {
+                    downloadProgress = Double(received) / Double(total)
+                }
+            }
+        }
+        if !buffer.isEmpty {
+            try handle.write(contentsOf: buffer)
+            received += Int64(buffer.count)
+            if total > 0 {
+                downloadProgress = Double(received) / Double(total)
+            }
+        }
+        downloadProgress = 1
+        return dest
+    }
+
+    private func openLocalFile(_ fileURL: URL) async {
+        // Use a simple open — on device the system may offer LiveContainer for .ipa
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            let presenter = UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .flatMap { $0.windows }
+                .first { $0.isKeyWindow }?
+                .rootViewController
+
+            guard let presenter else {
+                UIApplication.shared.open(fileURL)
+                cont.resume()
+                return
+            }
+
+            let doc = UIDocumentInteractionController(url: fileURL)
+            // Retain briefly
+            objc_setAssociatedObject(doc, "retained", doc, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            if !doc.presentOpenInMenu(from: CGRect(x: 0, y: 0, width: 1, height: 1), in: presenter.view, animated: true) {
+                UIApplication.shared.open(fileURL)
+            }
+            cont.resume()
+        }
+    }
+
+    private func openDownloadFallback(release: GitHubRelease) {
+        if let ipa = release.ipaDownloadURL {
+            UIApplication.shared.open(ipa)
+        } else if let page = URL(string: release.htmlURL) {
+            UIApplication.shared.open(page)
+        }
+        ToastView.present(text: "Opening download")
     }
 
     func openReleasePage() {
@@ -200,6 +435,9 @@ final class UpdateViewModel: ObservableObject {
     }
 }
 
+// Associated object helper for document controller lifetime
+import ObjectiveC
+
 struct UpdateView: View {
     @StateObject private var viewModel = UpdateViewModel()
 
@@ -207,6 +445,13 @@ struct UpdateView: View {
         NavigationView {
             Form {
                 Section {
+                    HStack {
+                        Text("Install mode")
+                        Spacer()
+                        Text(viewModel.environment.rawValue)
+                            .foregroundStyle(.secondary)
+                    }
+
                     HStack {
                         Text("Installed")
                         Spacer()
@@ -229,12 +474,21 @@ struct UpdateView: View {
                                 .font(.footnote)
                                 .foregroundStyle(.orange)
                         }
+
+                        if latest.ipaAsset == nil {
+                            Text("This release has no .ipa asset yet.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 } header: {
                     Text("Version")
                 } footer: {
-                    if !viewModel.statusMessage.isEmpty {
-                        Text(viewModel.statusMessage)
+                    VStack(alignment: .leading, spacing: 4) {
+                        if !viewModel.statusMessage.isEmpty {
+                            Text(viewModel.statusMessage)
+                        }
+                        Text(viewModel.environment.footer)
                     }
                 }
 
@@ -250,13 +504,27 @@ struct UpdateView: View {
                             }
                         }
                     }
-                    .disabled(viewModel.isChecking)
+                    .disabled(viewModel.isChecking || viewModel.isUpdating)
 
                     if viewModel.updateAvailable {
-                        Button("Download Update") {
-                            viewModel.openDownload()
+                        Button {
+                            Task { await viewModel.performUpdate() }
+                        } label: {
+                            HStack {
+                                Text(viewModel.environment.updateButtonTitle)
+                                    .fontWeight(.semibold)
+                                Spacer()
+                                if viewModel.isUpdating {
+                                    if let p = viewModel.downloadProgress {
+                                        Text("\(Int(p * 100))%")
+                                            .font(.caption.monospacedDigit())
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    ProgressView()
+                                }
+                            }
                         }
-                        .fontWeight(.semibold)
+                        .disabled(viewModel.isUpdating)
 
                         Button("View Release Notes") {
                             viewModel.openReleasePage()
@@ -293,6 +561,7 @@ struct UpdateView: View {
             .navigationTitle("Updates")
             .navigationBarTitleDisplayMode(.inline)
             .task {
+                viewModel.refreshEnvironment()
                 await viewModel.checkForUpdates()
             }
         }
