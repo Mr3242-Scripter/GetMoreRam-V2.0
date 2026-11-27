@@ -68,7 +68,6 @@ extension String: @retroactive LocalizedError {
 
 /// Anisette defaults matching Mr3242-Scripter/SideStore (AnisetteProvider / SideInstaller parity).
 enum AnisetteDefaults {
-    /// SideInstaller / SideStore `macADIOrder` — preferred Mac ADI hosts (tried first on Auto).
     static let macADIOrder: [String] = [
         "new.ani.sidestore.io",
         "mac-ani.jkcoxson.com",
@@ -78,13 +77,8 @@ enum AnisetteDefaults {
         "ani2.stikstore.app",
     ]
 
-    /// SideStore `macClientInfo` (current Mac, not the server's old 10.12 string).
     static let macClientInfo = "<MacBookPro18,3> <macOS;26.6;25F84> <com.apple.AuthKit/1 (com.apple.akd/1.0)>"
-
-    /// SideStore `macUserAgent`
     static let macUserAgent = "AuthKit/1 (Macintosh; OS X 26.6) (com.apple.akd/1.0)"
-
-    /// SideStore `fallbackServerURL`
     static let fallbackServerURL = "https://new.ani.sidestore.io"
 
     static func serverURL(forHost host: String) -> String {
@@ -101,9 +95,7 @@ class SharedModel: ObservableObject {
     @Published var appDisplayName = "MemoryBoost Pro"
     @Published var appIconData: UIImage? = nil
     
-    /// Default matches SideStore fallback / first macADIOrder host.
     @AppStorage("AnisetteServer") var anisetteServerURL = AnisetteDefaults.fallbackServerURL
-    /// SideStore Mac ADI client info (not the legacy 10.12 string).
     @AppStorage("AnisetteClientInfo") var anisetteClientInfo = AnisetteDefaults.macClientInfo
     @AppStorage("AnisetteUA") var anisetteUA = AnisetteDefaults.macUserAgent
     @AppStorage("AutoFireOnStartup") var autoFireOnStartup = false
@@ -118,7 +110,6 @@ class SharedModel: ObservableObject {
     private var restoreTask: Task<Void, Never>?
 
     init() {
-        // Migrate older installs that still have the outdated 10.12 client info.
         if anisetteClientInfo.contains("10.12") || anisetteClientInfo.contains("Mac OS X;10.") {
             anisetteClientInfo = AnisetteDefaults.macClientInfo
             anisetteUA = AnisetteDefaults.macUserAgent
@@ -130,7 +121,6 @@ class SharedModel: ObservableObject {
         restorePersistedLoginState()
     }
 
-    /// Restores the saved Apple session (account + team) after the app restarts.
     func restorePersistedLoginState() {
         guard restoreTask == nil,
               Keychain.shared.appleIDEmailAddress != nil else { return }
@@ -155,8 +145,6 @@ class SharedModel: ObservableObject {
     }
     
     private func restoreSession() async {
-        // SideSign sessions are not fully serializable the same way as StosSign.
-        // If credentials exist, mark restore as needing a fresh sign-in.
         await MainActor.run { self.sessionRestoreFailed = true }
     }
     
@@ -199,8 +187,6 @@ class DataManager {
     static let shared = DataManager()
     let model = SharedModel()
     
-    /// Fetches anisette using SideSign/AnisetteKit, with SideStore-matching Mac ADI
-    /// client info / UA and simple rotation across macADIOrder on failure.
     public static func fetchAnisetteData(logger: (((String) async->Void))? = nil ) async throws -> AnisetteData {
         let preferred = DataManager.shared.model.anisetteServerURL.trimmingCharacters(in: .whitespacesAndNewlines)
         var candidates: [String] = []
@@ -217,11 +203,16 @@ class DataManager {
             candidates = [AnisetteDefaults.fallbackServerURL]
         }
 
-        // Always use SideStore Mac ADI headers (not the server's advertised 10.12 string).
-        let clientInfo = AnisetteDefaults.macClientInfo
-        let userAgent = AnisetteDefaults.macUserAgent
-        DataManager.shared.model.anisetteClientInfo = clientInfo
-        DataManager.shared.model.anisetteUA = userAgent
+        var clientInfo = DataManager.shared.model.anisetteClientInfo.trimmingCharacters(in: .whitespacesAndNewlines)
+        var userAgent = DataManager.shared.model.anisetteUA.trimmingCharacters(in: .whitespacesAndNewlines)
+        if clientInfo.isEmpty {
+            clientInfo = AnisetteDefaults.macClientInfo
+            DataManager.shared.model.anisetteClientInfo = clientInfo
+        }
+        if userAgent.isEmpty {
+            userAgent = AnisetteDefaults.macUserAgent
+            DataManager.shared.model.anisetteUA = userAgent
+        }
 
         var lastError: Error = AnisetteError.invalidURL
 
@@ -269,7 +260,6 @@ class DataManager {
                     keychain.adiPb = newBlob.base64EncodedString()
                 }
 
-                // Remember the working server for next time
                 await MainActor.run {
                     DataManager.shared.model.anisetteServerURL = server
                 }
@@ -280,7 +270,6 @@ class DataManager {
             } catch {
                 lastError = error
                 await logger?("Anisette failed on \(url.host ?? server): \(error.localizedDescription)\n")
-                // Try next Mac ADI host
                 continue
             }
         }
