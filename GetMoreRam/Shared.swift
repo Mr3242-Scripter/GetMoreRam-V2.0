@@ -5,9 +5,8 @@
 //  Created by s s on 2025/3/15.
 //
 import SwiftUI
-import StosSign_API
-import StosSign_Auth
-import StosSign_Common
+import SideSign
+import AnisetteKit
 
 class AlertHelper<T>: ObservableObject {
     @Published var show = false
@@ -73,30 +72,26 @@ class SharedModel: ObservableObject {
     @Published var appDisplayName = "MemoryBoost Pro"
     @Published var appIconData: UIImage? = nil
     
-    @AppStorage("AnisetteServer") var anisetteServerURL = "https://ani.sidestore.io"
+    @AppStorage("AnisetteServer") var anisetteServerURL = "https://new.ani.sidestore.io"
+    @AppStorage("AnisetteClientInfo") var anisetteClientInfo = "<MacBookPro13,3> <Mac OS X;10.12.6;16G29> <com.apple.AuthKit/1 (com.apple.akd/1.0)>"
+    @AppStorage("AnisetteUA") var anisetteUA = "akd/1.0 CFNetwork/811.5.4 Darwin/16.7.0"
     @AppStorage("AutoFireOnStartup") var autoFireOnStartup = false
     @AppStorage("CustomAppName") var customAppName = "MemoryBoost Pro"
     @AppStorage("CustomAppIconURL") var customAppIconURL = ""
 
-    var session: AppleAPISession?
+    var anisetteHeader: AnisetteRequestHeaders?
+    var session: Session?
     var account: Account?
     var team: Team?
     
     private var restoreTask: Task<Void, Never>?
 
     init() {
-        updateAnisetteURL()
         loadCustomAppSettings()
         restorePersistedLoginState()
     }
 
-    func updateAnisetteURL() {
-        AnisetteDataHelper.shared.url = URL(string: anisetteServerURL)
-    }
-
     /// Restores the saved Apple session (account + team) after the app restarts.
-    /// `isLogin` only becomes true once a real session and team are back,
-    /// so the rest of the app never sees "logged in" without a usable session.
     func restorePersistedLoginState() {
         guard restoreTask == nil,
               Keychain.shared.appleIDEmailAddress != nil else { return }
@@ -106,56 +101,24 @@ class SharedModel: ObservableObject {
         }
     }
     
-    /// Waits for the startup restore (if any) to finish.
     func ensureSession() async {
         if isLogin { return }
         if restoreTask == nil { restorePersistedLoginState() }
         await restoreTask?.value
     }
     
-    /// Saves everything needed to restore this session on next launch.
-    func persistSession(_ session: AppleAPISession, account: Account) {
+    func persistSession(_ session: Session, account: Account) {
         Keychain.shared.sessionDSID = session.dsid
-        Keychain.shared.sessionAuthTokens = try? JSONEncoder().encode(session.authTokens)
-        Keychain.shared.sessionAccount = try? JSONEncoder().encode(account)
+        Keychain.shared.sessionAuthTokens = session.authToken.data(using: .utf8)
+        if let encoded = try? JSONEncoder().encode(account) {
+            Keychain.shared.sessionAccount = encoded
+        }
     }
     
     private func restoreSession() async {
-        guard let dsid = Keychain.shared.sessionDSID,
-              let tokensData = Keychain.shared.sessionAuthTokens,
-              let tokens = try? JSONDecoder().decode([String: String].self, from: tokensData),
-              let accountData = Keychain.shared.sessionAccount,
-              let account = try? JSONDecoder().decode(Account.self, from: accountData)
-        else {
-            // Credentials exist but there is no saved session (e.g. imported from SideStore)
-            await MainActor.run { self.sessionRestoreFailed = true }
-            return
-        }
-        
-        do {
-            let anisetteData = try await AnisetteDataHelper.shared.getAnisetteData()
-            let restored = AppleAPISession(dsid: dsid, authTokens: tokens, anisetteData: anisetteData)
-            let teams = try await AppleAPI.shared.fetchTeamsForAccount(account: account, session: restored)
-            
-            let savedTeamID = Keychain.shared.sessionTeamID
-            let team = teams.first(where: { $0.identifier == savedTeamID })
-                ?? (teams.count == 1 ? teams.first : nil)
-            
-            await MainActor.run {
-                self.account = account
-                self.session = restored
-                if let team {
-                    self.team = team
-                    self.isLogin = true
-                    self.sessionRestoreFailed = false
-                } else {
-                    self.sessionRestoreFailed = true
-                }
-            }
-        } catch {
-            print("Session restore failed: \(error.detailedDescription)")
-            await MainActor.run { self.sessionRestoreFailed = true }
-        }
+        // SideSign sessions are not fully serializable the same way as StosSign.
+        // If credentials exist, mark restore as needing a fresh sign-in.
+        await MainActor.run { self.sessionRestoreFailed = true }
     }
     
     func loadCustomAppSettings() {
@@ -196,6 +159,54 @@ class SharedModel: ObservableObject {
 class DataManager {
     static let shared = DataManager()
     let model = SharedModel()
+    
+    public static func fetchAnisetteData(logger: (((String) async->Void))? = nil ) async throws -> AnisetteData {
+        let server = DataManager.shared.model.anisetteServerURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: server), url.host != nil,
+              let scheme = url.scheme?.lowercased(), ["https", "http"].contains(scheme) else {
+            throw AnisetteError.invalidURL
+        }
+        await logger?("Anisette URL: \(url.absoluteString)\n")
+
+        let keychain = Keychain.shared
+        let savedIdentifier = keychain.anisetteDeviceIdentifier
+        let identifier = savedIdentifier ?? UUID()
+        let savedBlob = savedIdentifier == nil ? nil : keychain.adiPb.flatMap { Data(base64Encoded: $0) }
+        let manager = AnisetteDataManager(mode: .remote(server: url))
+
+        let result: (data: AnisetteData, newAdiBlob: Data?)
+        let headers = AnisetteRequestHeaders().with {
+            $0.clientInfo = DataManager.shared.model.anisetteClientInfo
+            $0.userAgent = DataManager.shared.model.anisetteUA
+        }
+        DataManager.shared.model.anisetteHeader = headers
+        do {
+            result = try await manager.fetchAnisetteData(identifier: identifier, existingAdiBlob: savedBlob, headers: headers)
+            
+        } catch SideSign.AnisetteError.badServerResponse(_, let payload)
+            where savedBlob != nil && payload.contains("-45061") && !Task.isCancelled {
+            await logger?("Anisette provisioning expired. Retrying…\n")
+            keychain.adiPb = nil
+            result = try await manager.fetchAnisetteData(identifier: identifier, headers: headers)
+        }
+
+        guard !Task.isCancelled else { throw CancellationError() }
+        if let newBlob = result.newAdiBlob {
+            keychain.identifier = withUnsafeBytes(of: identifier.uuid) { Data($0).base64EncodedString() }
+            keychain.adiPb = newBlob.base64EncodedString()
+        }
+        await logger?("Successfully fetched Anisette data\n")
+        return result.data
+    }
+}
+
+extension Keychain {
+    var anisetteDeviceIdentifier: UUID? {
+        guard let base64 = identifier,
+              let data = Data(base64Encoded: base64),
+              data.count == 16 else { return nil }
+        return data.withUnsafeBytes { UUID(uuid: $0.load(as: uuid_t.self)) }
+    }
 }
 
 extension Error {
