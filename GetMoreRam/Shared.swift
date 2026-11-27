@@ -66,7 +66,7 @@ extension String: @retroactive LocalizedError {
     }
 }
 
-/// Anisette defaults matching Mr3242-Scripter/SideStore (AnisetteProvider / SideInstaller parity).
+/// Defaults match Mr3242-Scripter/SideStore AnisetteProvider (Mac ADI).
 enum AnisetteDefaults {
     static let macADIOrder: [String] = [
         "new.ani.sidestore.io",
@@ -77,8 +77,13 @@ enum AnisetteDefaults {
         "ani2.stikstore.app",
     ]
 
+    /// SideStore AnisetteProvider.macClientInfo
     static let macClientInfo = "<MacBookPro18,3> <macOS;26.6;25F84> <com.apple.AuthKit/1 (com.apple.akd/1.0)>"
+
+    /// SideStore AnisetteProvider.macUserAgent
     static let macUserAgent = "AuthKit/1 (Macintosh; OS X 26.6) (com.apple.akd/1.0)"
+
+    /// SideStore AnisetteProvider.fallbackServerURL
     static let fallbackServerURL = "https://new.ani.sidestore.io"
 
     static func serverURL(forHost host: String) -> String {
@@ -203,6 +208,7 @@ class DataManager {
             candidates = [AnisetteDefaults.fallbackServerURL]
         }
 
+        // Prefer values saved in Settings; fall back to SideStore Mac ADI defaults if empty.
         var clientInfo = DataManager.shared.model.anisetteClientInfo.trimmingCharacters(in: .whitespacesAndNewlines)
         var userAgent = DataManager.shared.model.anisetteUA.trimmingCharacters(in: .whitespacesAndNewlines)
         if clientInfo.isEmpty {
