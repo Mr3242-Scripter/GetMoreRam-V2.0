@@ -507,6 +507,7 @@ struct SettingsView: View {
         } catch {
             errorInfo = error.detailedDescription
             errorShow = true
+            ToastCenter.shared.error("Sign in failed", detail: error.detailedDescription)
         }
     }
 
@@ -540,6 +541,7 @@ struct SettingsView: View {
 
         email = ""
         teamId = ""
+        ToastCenter.shared.info("Keychain cleaned")
     }
 
     func refreshAccountLabels() {
@@ -598,6 +600,7 @@ struct SettingsView: View {
                 importResultInfo = "Imported \(emailValue). Tap Sign in to continue."
                 importResultShow = true
                 pendingSideStoreFile = nil
+                ToastCenter.shared.success("Account imported", detail: emailValue)
                 return
             }
             if password == nil || password?.isEmpty == true {
@@ -619,6 +622,7 @@ struct SettingsView: View {
         if client.isEmpty || ua.isEmpty {
             anisetteSaveMessage = "Client Info and User Agent cannot be empty."
             showAnisetteSaveAlert = true
+            ToastCenter.shared.error("Cannot save", detail: "Client Info and User Agent cannot be empty.")
             return
         }
         sharedModel.anisetteClientInfo = client
@@ -627,6 +631,7 @@ struct SettingsView: View {
         draftUserAgent = ua
         anisetteSaveMessage = "Saved Client Info and User Agent."
         showAnisetteSaveAlert = true
+        ToastCenter.shared.success("Saved", detail: "Client Info and User Agent updated.")
     }
 
     func resetAnisetteHeaders() {
@@ -639,6 +644,7 @@ struct SettingsView: View {
         }
         anisetteSaveMessage = "Reset Client Info and User Agent to SideStore Mac ADI defaults."
         showAnisetteSaveAlert = true
+        ToastCenter.shared.info("Reset to defaults", detail: "SideStore Mac ADI Client Info and User Agent restored.")
     }
 
     func selectTeam(_ team: Team) {
@@ -649,6 +655,7 @@ struct SettingsView: View {
         teamId = team.identifier
         viewModel.availableTeams = []
         viewModel.teamSelectionShow = false
+        ToastCenter.shared.success("Signed in", detail: team.name)
     }
 
     func cancelTeamSelection() {
