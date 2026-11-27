@@ -581,38 +581,40 @@ struct SettingsView: View {
     func importSideStoreFile(password: String?) {
         guard let data = pendingSideStoreFile else { return }
 
+        // Encrypted SideStore exports need a file password first.
+        if !SideStoreImporter.isPlainJSON(data), password == nil || password?.isEmpty == true {
+            sideStoreFilePassword = ""
+            showSideStorePasswordPrompt = true
+            return
+        }
+
         do {
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let emailValue = json["email"] as? String {
-                Keychain.shared.appleIDEmailAddress = emailValue
-                if let pass = json["password"] as? String {
-                    Keychain.shared.appleIDPassword = pass
-                }
-                if let adi = json["anisetteAdiBlob"] as? String ?? json["adiPB"] as? String {
-                    Keychain.shared.adiPb = adi
-                }
-                if let local = json["anisetteIdentifier"] as? String ?? json["local_user"] as? String {
-                    Keychain.shared.identifier = local
-                }
-                email = emailValue
-                viewModel.appleID = emailValue
-                viewModel.password = Keychain.shared.appleIDPassword ?? ""
-                importResultInfo = "Imported \(emailValue). Tap Sign in to continue."
-                importResultShow = true
-                pendingSideStoreFile = nil
-                ToastCenter.shared.success("Account imported", detail: emailValue)
-                return
+            let account = try SideStoreImporter.parse(data, filePassword: password)
+            Keychain.shared.appleIDEmailAddress = account.email
+            if let pass = account.password, !pass.isEmpty {
+                Keychain.shared.appleIDPassword = pass
             }
-            if password == nil || password?.isEmpty == true {
-                sideStoreFilePassword = ""
-                showSideStorePasswordPrompt = true
-                return
-            }
-            errorInfo = "Could not decrypt or parse the SideStore account file."
-            errorShow = true
+            Keychain.shared.adiPb = account.anisetteAdiBlob
+            Keychain.shared.identifier = account.anisetteIdentifier
+
+            email = account.email
+            viewModel.appleID = account.email
+            viewModel.password = Keychain.shared.appleIDPassword ?? ""
+
+            importResultInfo = "Imported \(account.email). Tap Sign in to continue."
+            importResultShow = true
+            pendingSideStoreFile = nil
+            sideStoreFilePassword = ""
+            ToastCenter.shared.success("Account imported", detail: account.email)
+        } catch SideStoreImportError.wrongPassword {
+            sideStorePasswordMessage = "Wrong file password. Enter the password you chose when exporting from SideStore."
+            sideStoreFilePassword = ""
+            showSideStorePasswordPrompt = true
+            ToastCenter.shared.error("Wrong file password")
         } catch {
             errorInfo = error.localizedDescription
             errorShow = true
+            ToastCenter.shared.error("Import failed", detail: error.localizedDescription)
         }
     }
 
