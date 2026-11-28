@@ -488,6 +488,10 @@ struct SettingsView: View {
         do {
             let account = try SideStoreImporter.parse(data, filePassword: password)
             SideStoreImporter.apply(account)
+            sharedModel.session = nil
+            sharedModel.account = nil
+            sharedModel.team = nil
+            sharedModel.isLogin = false
             AnisetteDataHelper.shared.resetClientInfo()
             email = account.email
             viewModel.appleID = account.email
