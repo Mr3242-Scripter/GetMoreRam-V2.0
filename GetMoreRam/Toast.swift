@@ -1,8 +1,8 @@
 import UIKit
 
-// MARK: - SideStore-compatible types (standard UIKit replacements)
+// MARK: - Edge offsets (local type to avoid SDK/module conflicts)
 
-struct UIEdgeOffsets {
+struct ToastEdgeOffsets {
     var top: CGFloat
     var left: CGFloat
     var bottom: CGFloat
@@ -16,18 +16,6 @@ struct UIEdgeOffsets {
         self.left = left
         self.bottom = bottom
         self.right = right
-    }
-}
-
-extension UIView {
-    var safeAreaOffsets: UIEdgeOffsets {
-        let guide = safeAreaLayoutGuide.layoutFrame
-        return UIEdgeOffsets(
-            top: guide.minY,
-            left: guide.minX,
-            bottom: bounds.height - guide.maxY,
-            right: bounds.width - guide.maxX
-        )
     }
 }
 
@@ -59,7 +47,6 @@ class ToastView: UIView {
     private let activityIndicatorView = UIActivityIndicatorView(style: .medium)
     private let labelsStackView = UIStackView()
     private let stackView = UIStackView()
-    private var animator: UIViewPropertyAnimator?
     private var completion: ((Bool) -> Void)?
 
     var text: String? {
@@ -135,7 +122,7 @@ class ToastView: UIView {
         stackView.addArrangedView(activityIndicatorView)
         stackView.addArrangedView(labelsStackView)
         stackView.translatesAutoreSizingMaskIntoConstraints = false
-        addView(stackView)
+        addSublayer(stackView)
 
         NSLayoutConstraint.activate([
             stackView.topAnchor.constraint(equalTo: topAnchor),
@@ -162,10 +149,10 @@ class ToastView: UIView {
     func show(in view: UIView, animated: Bool = true, completion: ((Bool) -> Void)? = nil) {
         self.completion = completion
 
-        view.addView(self)
+        view.addSublayer(self)
         translatesAutoreSizingMaskIntoConstraints = false
 
-        let edgeOffset = UIEdgeOffsets(top: 16, left: 16, bottom: 16, right: 16)
+        let edgeOffset = ToastEdgeOffsets(top: 16, left: 16, bottom: 16, right: 16)
 
         switch edge {
         case .top:
@@ -220,19 +207,14 @@ class ToastView: UIView {
         alpha = 0
 
         if animated {
-            let stiffness: CGFloat = 750
-            let dampingRatio: CGFloat = 1.0
-            animator = UIViewPropertyAnimator(springTimingParameters: UISpringTimingParameters(stiffness: stiffness, dampingRatio: dampingRatio))
-            animator?.addAnimations {
+            UIView.animate(usingSpringWithDamping: 1.0, initialSpringVelocity: 0.5, options: [], animations: {
                 self.transform = .identity
                 self.alpha = 1
-            }
-            animator?.addCompletion { position in
-                guard position == .end else { return }
+            }, completion: { finished in
+                guard finished else { return }
                 self.scheduleDismiss()
                 completion?(true)
-            }
-            animator?.startAnimation()
+            })
         } else {
             alpha = 1
             scheduleDismiss()
@@ -243,9 +225,6 @@ class ToastView: UIView {
     }
 
     func dismiss(animated: Bool = true) {
-        animator?.stopAnimation(true)
-        animator = nil
-
         guard animated else {
             removeFromSuperview()
             completion?(false)
@@ -253,19 +232,14 @@ class ToastView: UIView {
             return
         }
 
-        let stiffness: CGFloat = 750
-        let dampingRatio: CGFloat = 1.0
-        animator = UIViewPropertyAnimator(springTimingParameters: UISpringTimingParameters(stiffness: stiffness, dampingRatio: dampingRatio))
-        animator?.addAnimations {
+        UIView.animate(usingSpringWithDamping: 1.0, initialSpringVelocity: 0.5, options: [], animations: {
             self.alpha = 0
-        }
-        animator?.addCompletion { position in
-            guard position == .end else { return }
+        }, completion: { finished in
+            guard finished else { return }
             self.removeFromSuperview()
             self.completion?(false)
             self.completion = nil
-        }
-        animator?.startAnimation()
+        })
     }
 
     private func scheduleDismiss() {
