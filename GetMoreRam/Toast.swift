@@ -1,360 +1,323 @@
-//
-//  ToastView.swift
-//  GetMoreRam — same implementation as SideStore/AltStore ToastView (Riley Testut).
-//
+import UIKit
 
-@preconcurrency import UIKit
+// MARK: - SideStore-compatible types (standard UIKit replacements)
 
-extension UIColor {
-    static var altPrimary: UIColor {
-        if let c = UIColor(named: "Primary", in: .main, compatibleWith: nil) {
-            return c
-        }
-        return UIColor(red: 28/255, green: 139/255, blue: 219/255, alpha: 1)
+struct UIEdgeOffsets {
+    var top: CGFloat
+    var left: CGFloat
+    var bottom: CGFloat
+    var right: CGFloat
+
+    var horizontal: CGFloat { left + right }
+    var vertical: CGFloat { top + bottom }
+
+    init(top: CGFloat, left: CGFloat, bottom: CGFloat, right: CGFloat) {
+        self.top = top
+        self.left = left
+        self.bottom = bottom
+        self.right = right
     }
 }
 
-extension UISpringTimingParameters {
-    convenience init(stiffness: CGFloat, dampingRatio: CGFloat) {
-        let mass: CGFloat = 1.0
-        let damping = 2.0 * dampingRatio * sqrt(stiffness * mass)
-        self.init(mass: mass, stiffness: stiffness, damping: damping, initialVelocity: .zero)
+extension UIView {
+    var safeAreaOffsets: UIEdgeOffsets {
+        let guide = safeAreaLayoutGuide.layoutFrame
+        return UIEdgeOffsets(
+            top: guide.minY,
+            left: guide.minX,
+            bottom: bounds.height - guide.maxY,
+            right: bounds.width - guide.maxX
+        )
     }
 }
 
-extension UIViewPropertyAnimator {
-    convenience init(springTimingParameters: UITimingCurveProvider, animations: (() -> Void)?) {
-        self.init(duration: 0.5, timingParameters: springTimingParameters)
-        if let animations { addAnimations(animations) }
-    }
-}
+// MARK: - ToastView
 
-extension NSError {
-    var localizedTitle: String? {
-        (userInfo[NSLocalizedFailureReasonErrorKey] as? String)
-            ?? (userInfo[NSLocalizedDescriptionKey] as? String)
-    }
-}
+@available(iOS 13.0, *)
+class ToastView: UIView {
 
-enum ErrorProcessing {
-    enum InfoMode { case fullError, localizedDescription }
-    static func getDescription(error: NSError, mode: InfoMode) -> String? {
-        error.localizedDescription
-    }
-}
+    enum Style {
+        case success, error, info
 
-extension TimeInterval {
-    static let shortToastViewDuration = 4.0
-    static let longToastViewDuration = 8.0
-}
-
-extension ToastView {
-    static let openErrorLogNotification = Notification.Name("ALTOpenErrorLogNotification")
-    static let willShowNotification = Notification.Name("ToastViewWillShowNotification")
-    static let didShowNotification = Notification.Name("ToastViewDidShowNotification")
-    static let willDismissNotification = Notification.Name("ToastViewWillDismissNotification")
-    static let didDismissNotification = Notification.Name("ToastViewDidDismissNotification")
-    static let userInfoKeyPropertyAnimator = "ToastViewUserInfoKeyPropertyAnimator"
-
-    public enum PresentationEdge: Int {
-        case none, top, bottom, left, right
-    }
-}
-
-class ToastView: UIControl {
-    public let textLabel = UILabel()
-    public let detailTextLabel = UILabel()
-    public let activityIndicatorView = UIActivityIndicatorView(style: .medium)
-
-    var presentationEdge: PresentationEdge = .bottom {
-        didSet {
-            if presentationEdge == .none { presentationEdge = .bottom }
+        var backgroundColor: UIColor {
+            switch self {
+            case .success: return .systemGreen
+            case .error: return .systemRed
+            case .info: return .systemBlue
+            }
         }
     }
 
-    var alignmentEdge: PresentationEdge = .none
-    var edgeOffset = UIOffset(horizontal: 15, vertical: 15)
+    enum Edge {
+        case top, bottom, left, right
+    }
 
-    private(set) var isShown = false
-    var preferredDuration: TimeInterval
-    var opensErrorLog: Bool = false
-
-    private let dimmingView = UIView()
-    private let stackView = UIStackView()
+    private let style: Style
+    private let edge: Edge
+    private let textLabel = UILabel()
+    private let detailTextLabel = UILabel()
+    private let activityIndicatorView = UIActivityIndicatorView(style: .medium)
     private let labelsStackView = UIStackView()
-    private var dismissTimer: Timer?
+    private let stackView = UIStackView()
+    private var animator: UIViewPropertyAnimator?
+    private var completion: ((Bool) -> Void)?
 
-    private var axisConstraint: NSLayoutConstraint?
-    private var hiddenAxisConstraint: NSLayoutConstraint?
-    private var alignmentConstraint: NSLayoutConstraint?
-    private var widthConstraint: NSLayoutConstraint?
-    private var heightConstraint: NSLayoutConstraint?
-
-    convenience init(text: String, detailText: String?, opensLog: Bool = false) {
-        self.init(text: text, detailText: detailText)
-        self.opensErrorLog = opensLog
-    }
-
-    init(text: String, detailText detailedText: String?) {
-        if detailedText == nil {
-            self.preferredDuration = .shortToastViewDuration
-        } else {
-            self.preferredDuration = .longToastViewDuration
+    var text: String? {
+        get { textLabel.text }
+        set {
+            textLabel.text = newValue
+            textLabel.isHidden = newValue == nil
         }
+    }
+
+    var detailText: String? {
+        get { detailTextLabel.text }
+        set {
+            detailTextLabel.text = newValue
+            detailTextLabel.isHidden = newValue == nil
+        }
+    }
+
+    var showsActivityIndicator: Bool = false {
+        didSet {
+            activityIndicatorView.isHidden = !showsActivityIndicator
+            if showsActivityIndicator {
+                activityIndicatorView.startAnimating()
+            } else {
+                activityIndicatorView.stopAnimating()
+            }
+        }
+    }
+
+    var tintColorForText: UIColor = .white {
+        didSet {
+            textLabel.textColor = tintColorForText
+            detailTextLabel.textColor = tintColorForText
+            activityIndicatorView.color = tintColorForText
+        }
+    }
+
+    init(style: Style, text: String? = nil, detailText: String? = nil, edge: Edge = .bottom) {
+        self.style = style
+        self.edge = edge
         super.init(frame: .zero)
-        self.initialize()
-        self.textLabel.text = text
-        self.detailTextLabel.text = detailedText
-        self.backgroundColor = .altPrimary
-        self.textLabel.textColor = .white
-        self.detailTextLabel.textColor = .white
-        self.isAccessibilityElement = true
-        self.layoutMargins = UIEdgeOffsets(top: 8, left: 16, bottom: 10, right: 16)
-        self.setNeedsLayout()
-        self.labelsStackView.spacing = (detailedText != nil) ? 4.0 : 0.0
-        self.labelsStackView.alignment = .leading
-        self.addTarget(self, action: #selector(ToastView.showErrorLog), for: .touchUpInside)
+
+        backgroundColor = style.backgroundColor
+        layer.cornerRadius = 14
+        clipsToBounds = true
+
+        textLabel.text = text
+        textLabel.font = UIFont.preferredFont(forTextStyle: .body)
+        textLabel.textColor = tintColorForText
+        textLabel.numberOfLines = 0
+        textLabel.isHidden = text == nil
+
+        detailTextLabel.text = detailText
+        detailTextLabel.font = UIFont.preferredFont(forTextStyle: .footnote)
+        detailTextLabel.textColor = tintColorForText
+        detailTextLabel.numberOfLines = 0
+        detailTextLabel.isHidden = detailText == nil
+
+        activityIndicatorView.color = tintColorForText
+        activityIndicatorView.isHidden = true
+
+        labelsStackView.axis = .vertical
+        labelsStackView.spacing = 2
+        labelsStackView.alignment = .leading
+        labelsStackView.addArrangedView(textLabel)
+        labelsStackView.addArrangedView(detailTextLabel)
+
+        stackView.axis = .horizontal
+        stackView.spacing = 12
+        stackView.alignment = .center
+        stackView.layoutMargins = UIEdgeOffsets(top: 8, left: 16, bottom: 10, right: 16)
+        stackView.isLayoutMarginsRelativeArrangement = true
+        stackView.addArrangedView(activityIndicatorView)
+        stackView.addArrangedView(labelsStackView)
+        stackView.translatesAutoreSizingMaskIntoConstraints = false
+        addView(stackView)
+
+        NSLayoutConstraint.activate([
+            stackView.topAnchor.constraint(equalTo: topAnchor),
+            stackView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
+        ])
+
+        NotificationCenter.default.addObserver(self, selector: #selector(handleDidEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
     }
 
-    public override init(frame: CGRect) {
-        self.preferredDuration = .shortToastViewDuration
-        super.init(frame: frame)
-        self.initialize()
-    }
-
-    convenience init(error: Error, opensLog: Bool = false) {
-        self.init(error: error)
-        self.opensErrorLog = opensLog
-    }
-
-    enum InfoMode: String {
-        case fullError
-        case localizedDescription
-    }
-
-    convenience init(error: Error) {
-        self.init(error: error, mode: .localizedDescription)
-    }
-
-    convenience init(error: Error, mode: InfoMode) {
-        let error = error as NSError
-        let text = error.localizedTitle ?? NSLocalizedString("Operation Failed", comment: "")
-        let detailText = ErrorProcessing.getDescription(error: error, mode: mode == .fullError ? .fullError : .localizedDescription)
-        self.init(text: text, detailText: detailText)
-    }
-
-    required init(coder aDecoder: NSCoder) {
+    required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    private func initialize() {
-        edgeOffset = UIOffset(horizontal: 15, vertical: 15)
-        dimmingView.backgroundColor = .black
-        dimmingView.alpha = 0.1
-        dimmingView.isHidden = true
-        dimmingView.translatesAutoreSizingMaskIntoConstraints = false
-        self.addSubclass(dimmingView)
-        NSLayoutConstraint.activate([
-            dimmingView.topAnchor.constraint(equalTo: self.topAnchor),
-            dimmingView.bottomAnchor.constraint(equalTo: self.bottomAnchor),
-            dimmingView.leadingAnchor.constraint(equalTo: self.leadingAnchor),
-            dimmingView.trailingAnchor.constraint(equalTo: self.trailingAnchor)
-        ])
-        stackView.axis = .horizontal
-        stackView.alignment = .center
-        stackView.spacing = 10
-        stackView.isLayoutMarginsRelativeArrangement = true
-        stackView.translatesAutoreSizingMaskIntoConstraints = false
-        self.addSubclass(stackView)
-        activityIndicatorView.color = .white
-        activityIndicatorView.hidesWhenStopped = true
-        activityIndicatorView.stopAnimating()
-        textLabel.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
-        textLabel.numberOfLines = 0
-        detailTextLabel.font = UIFont.systemFont(ofSize: 15)
-        detailTextLabel.numberOfLines = 0
-        labelsStackView.axis = .vertical
-        labelsStackView.alignment = .fill
-        labelsStackView.addArrangedSubclass(textLabel)
-        labelsStackView.addArrangedSubclass(detailTextLabel)
-        stackView.addArrangedSubclass(activityIndicatorView)
-        stackView.addArrangedSubclass(labelsStackView)
-        NSLayoutConstraint.activate([
-            stackView.topAnchor.constraint(equalTo: self.layoutMarginsGuide.topAnchor),
-            stackView.bottomAnchor.constraint(equalTo: self.layoutMarginsGuide.bottomAnchor),
-            stackView.leadingAnchor.constraint(equalTo: self.layoutMarginsGuide.leadingAnchor),
-            stackView.trailingAnchor.constraint(equalTo: self.layoutMarginsGuide.trailingAnchor)
-        ])
-        self.layer.cornerRadius = 16
-        self.clipsToBounds = true
-        NotificationCenter.default.addObserver(self, selector: #selector(ToastView.toastViewWillShow(_:)), name: ToastView.willShowNotification, object: nil)
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
-    deinit { NotificationCenter.default.removeObserver(self) }
+    @objc private func handleDidEnterBackground() {
+        dismiss(animated: false)
+    }
 
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        if self.superview != nil, axisConstraint == nil {
-            self.translatesAutoreSizingMaskIntoConstraints = false
-            let width = self.superview!.bounds.width - (edgeOffset.horizontal * 2) - self.superview!.safeAreaOffsets.left - self.superview!.safeAreaOffsets.right
-            widthConstraint = self.widthAnchor.constraint(lessThanOrEqualToConstant: min(width, 400))
-            heightConstraint = self.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
-            switch presentationEdge {
-            case .bottom:
-                axisConstraint = self.bottomAnchor.constraint(equalTo: self.superview!.safeAreaLayoutGuide.bottomAnchor, constant: -edgeOffset.vertical)
-                hiddenAxisConstraint = self.topAnchor.constraint(equalTo: self.superview!.bottomAnchor)
-            case .top:
-                axisConstraint = self.topAnchor.constraint(equalTo: self.superview!.safeAreaLayoutGuide.topAnchor, constant: edgeOffset.vertical)
-                hiddenAxisConstraint = self.bottomAnchor.constraint(equalTo: self.superview!.topAnchor)
-            case .left:
-                axisConstraint = self.leadingAnchor.constraint(equalTo: self.superview!.safeAreaLayoutGuide.leadingAnchor, constant: edgeOffset.horizontal)
-                hiddenAxisConstraint = self.trailingAnchor.constraint(equalTo: self.superview!.leadingAnchor)
-            case .right:
-                axisConstraint = self.trailingAnchor.constraint(equalTo: self.superview!.safeAreaLayoutGuide.trailingAnchor, constant: -edgeOffset.horizontal)
-                hiddenAxisConstraint = self.leadingAnchor.constraint(equalTo: self.superview!.trailingAnchor)
-            case .none: break
+    func show(in view: UIView, animated: Bool = true, completion: ((Bool) -> Void)? = nil) {
+        self.completion = completion
+
+        view.addView(self)
+        translatesAutoreSizingMaskIntoConstraints = false
+
+        let edgeOffset = UIEdgeOffsets(top: 16, left: 16, bottom: 16, right: 16)
+
+        switch edge {
+        case .top:
+            NSLayoutConstraint.activate([
+                topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: edgeOffset.top),
+                leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: edgeOffset.left),
+                trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -edgeOffset.right),
+                centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            ])
+        case .bottom:
+            NSLayoutConstraint.activate([
+                bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -edgeOffset.bottom),
+                leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: edgeOffset.left),
+                trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -edgeOffset.right),
+                centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            ])
+        case .left:
+            NSLayoutConstraint.activate([
+                leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: edgeOffset.left),
+                topAnchor.constraint(greaterThanOrEqualTo: view.topAnchor, constant: edgeOffset.top),
+                bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor, constant: -edgeOffset.bottom),
+                centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            ])
+        case .right:
+            NSLayoutConstraint.activate([
+                trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -edgeOffset.right),
+                topAnchor.constraint(greaterThanOrEqualTo: view.topAnchor, constant: edgeOffset.top),
+                bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor, constant: -edgeOffset.bottom),
+                centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            ])
+        }
+
+        let width = view.bounds.width - (edgeOffset.horizontal * 2) - view.safeAreaLayoutGuide.layoutFrame.minX - (view.bounds.width - view.safeAreaLayoutGuide.layoutFrame.maxX)
+        widthAnchor.constraint(lessThanOrEqualToConstant: max(width, 200)).isActive = true
+
+        if let previousToast = view.subviews.compactMap({ $0 as? ToastView }).filter({ $0 !== self && $0.edge == edge }).last {
+            previousToast.dismiss(animated: false)
+        }
+
+        setNeedsLayout()
+        layoutIfNeeded()
+
+        let distance: CGFloat
+        switch edge {
+        case .left: distance = -(bounds.width + edgeOffset.horizontal + view.safeAreaLayoutGuide.layoutFrame.minX)
+        case .right: distance = bounds.width + edgeOffset.horizontal + (view.bounds.width - view.safeAreaLayoutGuide.layoutFrame.maxX)
+        case .top: distance = -(bounds.height + edgeOffset.vertical + view.safeAreaLayoutGuide.layoutFrame.minY)
+        default: distance = bounds.height + edgeOffset.vertical + (view.bounds.height - view.safeAreaLayoutGuide.layoutFrame.maxY)
+        }
+
+        transform = CGAffineTransform(translationX: edge == .left || edge == .right ? distance : 0, y: edge == .top || edge == .bottom ? distance : 0)
+        alpha = 0
+
+        if animated {
+            let stiffness: CGFloat = 750
+            let dampingRatio: CGFloat = 1.0
+            animator = UIViewPropertyAnimator(springTimingParameters: UISpringTimingParameters(stiffness: stiffness, dampingRatio: dampingRatio))
+            animator?.addAnimations {
+                self.transform = .identity
+                self.alpha = 1
             }
-            switch alignmentEdge {
-            case .left:
-                alignmentConstraint = self.leadingAnchor.constraint(equalTo: self.superview!.safeAreaLayoutGuide.leadingAnchor, constant: edgeOffset.horizontal)
-            case .right:
-                alignmentConstraint = self.trailingAnchor.constraint(equalTo: self.superview!.safeAreaLayoutGuide.trailingAnchor, constant: -edgeOffset.horizontal)
-            case .top, .bottom, .none:
-                alignmentConstraint = self.centerXAnchor.constraint(equalTo: self.superview!.centerXAnchor)
+            animator?.addCompletion { position in
+                guard position == .end else { return }
+                self.scheduleDismiss()
+                completion?(true)
             }
-            NSLayoutConstraint.activate([widthConstraint!, heightConstraint!, alignmentConstraint!, hiddenAxisConstraint!].compactMap { $0 })
+            animator?.startAnimation()
+        } else {
+            alpha = 1
+            scheduleDismiss()
+            completion?(true)
         }
+
+        UIAccessibility.post(notification: .announcement, argument: text)
     }
 
-    func show(in viewController: UIViewController) { self.show(in: viewController.view) }
-    func show(in view: UIView) { self.show(in: view, duration: self.preferredDuration) }
+    func dismiss(animated: Bool = true) {
+        animator?.stopAnimation(true)
+        animator = nil
 
-    func show(in view: UIView, duration: TimeInterval) {
-        dismissTimer?.invalidate()
-        if duration > 0 {
-            dismissTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in self?.dismiss() }
-        } else { dismissTimer = nil }
-        if isShown { return }
-        isShown = true
-        textLabel.preferredMaxLayoutWidth = view.bounds.width
-        detailTextLabel.preferredMaxLayoutWidth = view.bounds.width
-        view.addSubclass(self)
-        view.layoutIfNeeded()
-        hiddenAxisConstraint?.isActive = false
-        axisConstraint?.isActive = true
+        guard animated else {
+            removeFromSuperview()
+            completion?(false)
+            completion = nil
+            return
+        }
 
-        var distance: CGFloat = 0
-        let overshoot: CGFloat = 10
-        switch self.presentationEdge {
-        case .left: distance = self.bounds.width + self.edgeOffset.horizontal + view.safeAreaOffsets.left
-        case .right: distance = self.bounds.width + self.edgeOffset.horizontal + view.safeAreaOffsets.right
-        case .top: distance = self.bounds.height + self.edgeOffset.vertical + view.safeAreaOffsets.top
-        default: distance = self.bounds.height + self.edgeOffset.vertical + view.safeAreaOffsets.bottom
+        let stiffness: CGFloat = 750
+        let dampingRatio: CGFloat = 1.0
+        animator = UIViewPropertyAnimator(springTimingParameters: UISpringTimingParameters(stiffness: stiffness, dampingRatio: dampingRatio))
+        animator?.addAnimations {
+            self.alpha = 0
         }
-        let percentOvershoot = overshoot / distance
-        let dampingRatio = -log(percentOvershoot) / sqrt(pow(.pi, 2) + pow(log(percentOvershoot), 2))
-        let timingParameters = UISpringTimingParameters(stiffness: 750.0, dampingRatio: dampingRatio)
-        let animator = UIViewPropertyAnimator(springTimingParameters: timingParameters, animations: { view.layoutIfNeeded() })
-        animator.addCompletion { [weak self] _ in
-            guard let self = self else { return }
-            NotificationCenter.default.post(name: ToastView.didShowNotification, object: self)
-        }
-        animator.startAnimation()
-        NotificationCenter.default.post(name: ToastView.willShowNotification, object: self, userInfo: [ToastView.userInfoKeyPropertyAnimator: animator])
-        let announcement = (self.textLabel.text ?? "") + ". " + (self.detailTextLabel.text ?? "")
-        self.accessibilityLabel = announcement
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
-            UIAccessibility.post(notification: .announcement, argument: announcement)
-        }
-    }
-
-    @objc func dismiss() {
-        if !isShown { return }
-        isShown = false
-        dismissTimer?.invalidate()
-        if self.superview != nil {
-            axisConstraint?.isActive = false
-            hiddenAxisConstraint?.isActive = true
-        }
-        let timingParameters = UISpringTimingParameters(stiffness: 750.0, dampingRatio: 1.0)
-        let animator = UIViewPropertyAnimator(springTimingParameters: timingParameters, animations: {
-            self.superview?.layoutIfNeeded()
-        })
-        animator.addCompletion { [weak self] position in
-            guard let self = self else { return }
-            if position != .end { return }
+        animator?.addCompletion { position in
+            guard position == .end else { return }
             self.removeFromSuperview()
-            self.axisConstraint = nil
-            self.hiddenAxisConstraint = nil
-            self.alignmentConstraint = nil
-            NotificationCenter.default.post(name: ToastView.didDismissNotification, object: self)
+            self.completion?(false)
+            self.completion = nil
         }
-        animator.startAnimation()
-        NotificationCenter.default.post(name: ToastView.willDismissNotification, object: self, userInfo: [ToastView.userInfoKeyPropertyAnimator: animator])
+        animator?.startAnimation()
     }
 
-    @objc private func toastViewWillShow(_ notification: Notification) {
-        guard let toastView = notification.object as? ToastView, toastView != self else { return }
-        if toastView.presentationEdge == self.presentationEdge { dismiss() }
-    }
-
-    override var isHighlighted: Bool {
-        get { super.isHighlighted }
-        set { super.isHighlighted = newValue; dimmingView.isHidden = !newValue }
-    }
-
-    override var layoutMargins: UIEdgeOffsets {
-        get { super.layoutMargins }
-        set { super.layoutMargins = newValue; stackView.layoutMargins = newValue }
-    }
-}
-
-private extension ToastView {
-    @objc func showErrorLog() {
-        guard self.opensErrorLog else { return }
-        NotificationCenter.default.post(name: ToastView.openErrorLogNotification, object: self)
+    private func scheduleDismiss() {
+        let duration: TimeInterval = detailText != nil ? 8 : 4
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak self] in
+            self?.dismiss(animated: true)
+        }
     }
 }
 
 extension ToastView {
-    @MainActor
-    static func present(text: String, detailText: String? = nil, duration: TimeInterval? = nil) {
-        let toast = ToastView(text: text, detailText: detailText)
-        if let duration { toast.preferredDuration = duration }
-        toast.presentationEdge = .bottom
-        guard let window = keyWindow() else { return }
-        toast.show(in: window)
+    convenience init(error: Error, edge: Edge = .bottom) {
+        self.init(style: .error, text: error.localizedDescription, edge: edge)
+    }
+}
+
+// MARK: - ToastCenter
+
+@available(iOS 13.0, *)
+final class ToastCenter {
+    static let shared = ToastCenter()
+    private init() { }
+
+    func success(_ text: String, detailText: String? = nil, in view: UIView? = nil) {
+        show(style: .success, text: text, detailText: detailText, in: view)
     }
 
-    @MainActor
-    static func presentError(_ error: Error) {
-        let toast = ToastView(error: error)
-        toast.presentationEdge = .bottom
-        guard let window = keyWindow() else { return }
-        toast.show(in: window)
+    func error(_ text: String, detailText: String? = nil, in view: UIView? = nil) {
+        show(style: .error, text: text, detailText: detailText, in: view)
     }
 
-    @MainActor
-    private static func keyWindow() -> UIWindow? {
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        for scene in scenes where scene.activationState == .foregroundActive {
-            if let window = scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first {
-                return window
-            }
+    func info(_ text: String, detailText: String? = nil, in view: UIView? = nil) {
+        show(style: .info, text: text, detailText: detailText, in: view)
+    }
+
+    func error(_ error: Error, in view: UIView? = nil) {
+        show(style: .error, text: error.localizedDescription, in: view)
+    }
+
+    private func show(style: ToastView.Style, text: String, detailText: String? = nil, in view: UIView?) {
+        DispatchQueue.main.async {
+            let targetView = view ?? Self.keyWindow
+            guard let targetView else { return }
+            let toast = ToastView(style: style, text: text, detailText: detailText)
+            toast.show(in: targetView)
         }
-        return scenes.flatMap { $0.windows }.first
     }
-}
 
-@MainActor
-enum ToastCenter {
-    static let shared = ToastCenterProxy()
-}
-
-@MainActor
-final class ToastCenterProxy {
-    func success(_ title: String, detail: String? = nil) { ToastView.present(text: title, detailText: detail) }
-    func error(_ title: String, detail: String? = nil) { ToastView.present(text: title, detailText: detail) }
-    func info(_ title: String, detail: String? = nil) { ToastView.present(text: title, detailText: detail) }
-    func error(_ error: Error) { ToastView.presentError(error) }
+    private static var keyWindow: UIView? {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }
+    }
 }
