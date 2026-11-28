@@ -202,26 +202,3 @@ enum SideStoreImporter {
     }
 }
 
-/// The old plain-JSON layout this app used to expect.
-private enum SideStoreAccountImporterLegacy {
-    static func decode(_ json: Data) throws -> SideStoreImportedAccount {
-        let account = try JSONDecoder().decode(SideStoreAccount.self, from: json)
-        
-        let email = account.email.trimmingCharacters(in: .whitespacesAndNewlines)
-        let adiPB = account.adiPB.trimmingCharacters(in: .whitespacesAndNewlines)
-        let localUser = account.localUser.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        guard !email.isEmpty, !adiPB.isEmpty,
-              let decoded = Data(base64Encoded: localUser), decoded.count == 16 else {
-            throw SideStoreImportError.unreadableFile
-        }
-        
-        let password = account.password.trimmingCharacters(in: .whitespacesAndNewlines)
-        return SideStoreImportedAccount(
-            email: email,
-            password: password.isEmpty ? nil : password,
-            anisetteIdentifier: localUser,
-            anisetteAdiBlob: adiPB
-        )
-    }
-}
