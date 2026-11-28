@@ -37,6 +37,8 @@ enum SideStoreImportError: LocalizedError {
             return "Wrong file password, or the file is corrupted."
         case .missingField(let field):
             return "The SideStore account file is missing \(field)."
+        case .invalidCertificate:
+            return "The signing certificate in this SideStore export could not be opened. Check the certificate password or export a new account file."
         }
     }
 }
