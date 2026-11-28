@@ -90,7 +90,7 @@ struct SettingsView: View {
                         Text("Anisette Server")
                         Spacer()
                         Text(serverDisplayName)
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(.secondary)
                             .lineLimit(1)
                     }
                 }
@@ -98,22 +98,20 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Client Info")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    TextField("Client Info", text: $draftClientInfo, axis: .vertical)
-                        .lineLimit(2...4)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+                        .foregroundColor(.secondary)
+                    TextField("Client Info", text: $draftClientInfo)
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
                         .font(.system(.footnote, design: .monospaced))
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("User Agent")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    TextField("User Agent", text: $draftUserAgent, axis: .vertical)
-                        .lineLimit(1...3)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+                        .foregroundColor(.secondary)
+                    TextField("User Agent", text: $draftUserAgent)
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
                         .font(.system(.footnote, design: .monospaced))
                 }
 
@@ -124,7 +122,7 @@ struct SettingsView: View {
                 Button("Reset to Default") {
                     resetAnisetteHeaders()
                 }
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
 
                 Toggle(
                     "Auto Fire on Startup",
@@ -324,10 +322,10 @@ struct SettingsView: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(team.name)
-                                .foregroundStyle(.primary)
+                                .foregroundColor(.primary)
                             Text("\(team.identifier) · \(teamTypeDescription(team.type))")
                                 .font(.footnote)
-                                .foregroundStyle(.secondary)
+                                .foregroundColor(.secondary)
                         }
                     }
                 }
