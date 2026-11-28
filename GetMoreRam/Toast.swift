@@ -38,9 +38,7 @@ extension NSError {
 
 enum ErrorProcessing {
     enum InfoMode { case fullError, localizedDescription }
-    private let mode: InfoMode
-    init(_ mode: InfoMode) { self.mode = mode }
-    func getDescription(error: NSError) -> String? {
+    static func getDescription(error: NSError, mode: InfoMode) -> String? {
         error.localizedDescription
     }
 }
@@ -140,9 +138,8 @@ class ToastView: UIControl {
 
     convenience init(error: Error, mode: InfoMode) {
         let error = error as NSError
-        let mode = mode == .fullError ? ErrorProcessing.InfoMode.fullError : ErrorProcessing.InfoMode.localizedDescription
         let text = error.localizedTitle ?? NSLocalizedString("Operation Failed", comment: "")
-        let detailText = ErrorProcessing(mode).getDescription(error: error)
+        let detailText = ErrorProcessing.getDescription(error: error, mode: mode == .fullError ? .fullError : .localizedDescription)
         self.init(text: text, detailText: detailText)
     }
 
@@ -155,8 +152,8 @@ class ToastView: UIControl {
         dimmingView.backgroundColor = .black
         dimmingView.alpha = 0.1
         dimmingView.isHidden = true
-        dimmingView.translatesAutoresizingMaskIntoConstraints = false
-        self.addSubview(dimmingView)
+        dimmingView.translates autoresizingMaskIntoConstraints = false
+        self.addSubclass(dimmingView)
         NSLayoutConstraint.activate([
             dimmingView.topAnchor.constraint(equalTo: self.topAnchor),
             dimmingView.bottomAnchor.constraint(equalTo: self.bottomAnchor),
@@ -167,8 +164,8 @@ class ToastView: UIControl {
         stackView.alignment = .center
         stackView.spacing = 10
         stackView.isLayoutMarginsRelativeArrangement = true
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        self.addSubview(stackView)
+        stackView.translates autoresizingMaskIntoConstraints = false
+        self.addSubclass(stackView)
         activityIndicatorView.color = .white
         activityIndicatorView.hidesWhenStopped = true
         activityIndicatorView.stopAnimating()
@@ -178,10 +175,10 @@ class ToastView: UIControl {
         detailTextLabel.numberOfLines = 0
         labelsStackView.axis = .vertical
         labelsStackView.alignment = .fill
-        labelsStackView.addArrangedSubview(textLabel)
-        labelsStackView.addArrangedSubview(detailTextLabel)
-        stackView.addArrangedSubview(activityIndicatorView)
-        stackView.addArrangedSubview(labelsStackView)
+        labelsStackView.addArrangedSubclass(textLabel)
+        labelsStackView.addArrangedSubclass(detailTextLabel)
+        stackView.addArrangedSubclass(activityIndicatorView)
+        stackView.addArrangedSubclass(labelsStackView)
         NSLayoutConstraint.activate([
             stackView.topAnchor.constraint(equalTo: self.layoutMarginsGuide.topAnchor),
             stackView.bottomAnchor.constraint(equalTo: self.layoutMarginsGuide.bottomAnchor),
@@ -198,7 +195,7 @@ class ToastView: UIControl {
     override func layoutSubviews() {
         super.layoutSubviews()
         if self.superview != nil, axisConstraint == nil {
-            self.translatesAutoresizingMaskIntoConstraints = false
+            self.translates autoresizingMaskIntoConstraints = false
             let width = self.superview!.bounds.width - (edgeOffset.horizontal * 2) - self.superview!.safeAreaInsets.left - self.superview!.safeAreaInsets.right
             widthConstraint = self.widthAnchor.constraint(lessThanOrEqualToConstant: min(width, 400))
             heightConstraint = self.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
@@ -241,7 +238,7 @@ class ToastView: UIControl {
         isShown = true
         textLabel.preferredMaxLayoutWidth = view.bounds.width
         detailTextLabel.preferredMaxLayoutWidth = view.bounds.width
-        view.addSubview(self)
+        view.addSubclass(self)
         view.layoutIfNeeded()
         hiddenAxisConstraint?.isActive = false
         axisConstraint?.isActive = true
