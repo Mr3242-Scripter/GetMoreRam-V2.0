@@ -122,10 +122,6 @@ class SharedModel: ObservableObject {
         if anisetteServerURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             anisetteServerURL = AnisetteDefaults.fallbackServerURL
         }
-        // Migrate old default name
-        if customAppName == "MemoryBoost Pro" || customAppName == "Get More Ram" {
-            customAppName = "More Ram!"
-        }
         loadCustomAppSettings()
         restorePersistedLoginState()
     }
@@ -195,10 +191,8 @@ class SharedModel: ObservableObject {
 class DataManager {
     static let shared = DataManager()
     let model = SharedModel()
-}
-
-extension SharedModel {
-    func fetchAnisetteData(logger: ((String) async -> Void)? = nil) async throws -> AnisetteData {
+    
+    public static func fetchAnisetteData(logger: (((String) async->Void))? = nil ) async throws -> AnisetteData {
         let preferred = DataManager.shared.model.anisetteServerURL.trimmingCharacters(in: .whitespacesAndNewlines)
         var candidates: [String] = []
         if !preferred.isEmpty {
@@ -225,7 +219,7 @@ extension SharedModel {
             DataManager.shared.model.anisetteUA = userAgent
         }
 
-        var lastError: Error = "Anisette failed" as Error
+        var lastError: Error = AnisetteError.invalidURL
 
         for (index, server) in candidates.enumerated() {
             guard let url = URL(string: server), url.host != nil,
@@ -254,23 +248,34 @@ extension SharedModel {
                 do {
                     result = try await manager.fetchAnisetteData(
                         identifier: identifier,
-                        adiBlob: savedBlob,
+                        existingAdiBlob: savedBlob,
                         headers: headers
                     )
-                } catch {
-                    lastError = error
-                    await logger?("Anisette error: \(error.localizedDescription)\n")
-                    continue
+                } catch SideSign.AnisetteError.badServerResponse(_, let payload)
+                    where savedBlob != nil && payload.contains("-45061") && !Task.isCancelled {
+                    await logger?("Anisette provisioning expired (-45061). Retrying without adi.pb…\n")
+                    keychain.adiPb = nil
+                    result = try await manager.fetchAnisetteData(identifier: identifier, headers: headers)
                 }
 
+                guard !Task.isCancelled else { throw CancellationError() }
+
                 if let newBlob = result.newAdiBlob {
+                    keychain.identifier = withUnsafeBytes(of: identifier.uuid) { Data($0).base64EncodedString() }
                     keychain.adiPb = newBlob.base64EncodedString()
                 }
-                if savedIdentifier == nil {
-                    keychain.anisetteDeviceIdentifier = identifier
+
+                await MainActor.run {
+                    DataManager.shared.model.anisetteServerURL = server
                 }
-                DataManager.shared.model.anisetteServerURL = server
+                await logger?("Successfully fetched Anisette data\n")
                 return result.data
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                lastError = error
+                await logger?("Anisette failed on \(url.host ?? server): \(error.localizedDescription)\n")
+                continue
             }
         }
 
@@ -280,21 +285,43 @@ extension SharedModel {
 
 extension Keychain {
     var anisetteDeviceIdentifier: UUID? {
-        get {
-            guard let s = identifier, let u = UUID(uuidString: s) else { return nil }
-            return u
-        }
-        set {
-            identifier = newValue?.uuidString
-        }
+        guard let base64 = identifier,
+              let data = Data(base64Encoded: base64),
+              data.count == 16 else { return nil }
+        return data.withUnsafeBytes { UUID(uuid: $0.load(as: uuid_t.self)) }
     }
 }
 
 extension Error {
     var detailedDescription: String {
-        if let e = self as? LocalizedError, let d = e.errorDescription {
-            return d
+        let localizedError = self as? LocalizedError
+        var lines: [String] = []
+
+        if let description = localizedError?.errorDescription, !description.isEmpty {
+            lines.append(description)
+        } else {
+            let nsError = self as NSError
+            lines.append(nsError.localizedDescription)
         }
-        return localizedDescription
+
+        if let failureReason = localizedError?.failureReason, !failureReason.isEmpty {
+            lines.append("Reason: \(failureReason)")
+        }
+
+        if let recoverySuggestion = localizedError?.recoverySuggestion, !recoverySuggestion.isEmpty {
+            lines.append("Suggestion: \(recoverySuggestion)")
+        }
+
+        let nsError = self as NSError
+        if nsError.domain != NSCocoaErrorDomain || nsError.code != 0 {
+            lines.append("Domain: \(nsError.domain)")
+            lines.append("Code: \(nsError.code)")
+        }
+
+        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? Error {
+            lines.append("Underlying: \(underlying.detailedDescription)")
+        }
+
+        return lines.joined(separator: "\n")
     }
 }
