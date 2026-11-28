@@ -1,14 +1,19 @@
 //
 //  ToastView.swift
-//  GetMoreRam
-//
-//  Created by Riley Testut on 7/19/19.
-//  Based on AltStore/SideStore ToastView by Riley Testut.
+//  GetMoreRam — same implementation as SideStore/AltStore ToastView (Riley Testut).
 //
 
 @preconcurrency import UIKit
 
-// MARK: - SideStore ToastView API compatibility (public UIKit mapping)
+extension UIColor {
+    static var altPrimary: UIColor {
+        if let c = UIColor(named: "Primary", in: .main, compatibleWith: nil) {
+            return c
+        }
+        return UIColor(red: 28/255, green: 139/255, blue: 219/255, alpha: 1)
+    }
+}
+
 extension UISpringTimingParameters {
     convenience init(stiffness: CGFloat, dampingRatio: CGFloat) {
         let mass: CGFloat = 1.0
@@ -20,20 +25,32 @@ extension UISpringTimingParameters {
 extension UIViewPropertyAnimator {
     convenience init(springTimingParameters: UITimingCurveProvider, animations: (() -> Void)?) {
         self.init(duration: 0.5, timingParameters: springTimingParameters)
-        if let animations {
-            addAnimations(animations)
-        }
+        if let animations { addAnimations(animations) }
     }
 }
 
-extension TimeInterval
-{
+extension NSError {
+    var localizedTitle: String? {
+        (userInfo[NSLocalizedFailureReasonErrorKey] as? String)
+            ?? (userInfo[NSLocalizedDescriptionKey] as? String)
+    }
+}
+
+enum ErrorProcessing {
+    enum InfoMode { case fullError, localizedDescription }
+    private let mode: InfoMode
+    init(_ mode: InfoMode) { self.mode = mode }
+    func getDescription(error: NSError) -> String? {
+        error.localizedDescription
+    }
+}
+
+extension TimeInterval {
     static let shortToastViewDuration = 4.0
     static let longToastViewDuration = 8.0
 }
 
-extension ToastView
-{
+extension ToastView {
     static let openErrorLogNotification = Notification.Name("ALTOpenErrorLogNotification")
     static let willShowNotification = Notification.Name("ToastViewWillShowNotification")
     static let didShowNotification = Notification.Name("ToastViewDidShowNotification")
@@ -42,25 +59,18 @@ extension ToastView
     static let userInfoKeyPropertyAnimator = "ToastViewUserInfoKeyPropertyAnimator"
 
     public enum PresentationEdge: Int {
-        case none
-        case top
-        case bottom
-        case left
-        case right
+        case none, top, bottom, left, right
     }
 }
 
-class ToastView: UIControl
-{
+class ToastView: UIControl {
     public let textLabel = UILabel()
     public let detailTextLabel = UILabel()
     public let activityIndicatorView = UIActivityIndicatorView(style: .medium)
 
     var presentationEdge: PresentationEdge = .bottom {
         didSet {
-            if presentationEdge == .none {
-                presentationEdge = .bottom
-            }
+            if presentationEdge == .none { presentationEdge = .bottom }
         }
     }
 
@@ -87,29 +97,22 @@ class ToastView: UIControl
         self.opensErrorLog = opensLog
     }
 
-    init(text: String, detailText detailedText: String?)
-    {
+    init(text: String, detailText detailedText: String?) {
         if detailedText == nil {
             self.preferredDuration = .shortToastViewDuration
         } else {
             self.preferredDuration = .longToastViewDuration
         }
-
         super.init(frame: .zero)
         self.initialize()
-
         self.textLabel.text = text
         self.detailTextLabel.text = detailedText
-
-        // SideStore uses .altPrimary; approximate brand blue
-        self.backgroundColor = UIColor(red: 0.20, green: 0.45, blue: 0.95, alpha: 1.0)
+        self.backgroundColor = .altPrimary
         self.textLabel.textColor = .white
         self.detailTextLabel.textColor = .white
-
         self.isAccessibilityElement = true
         self.layoutMargins = UIEdgeInsets(top: 8, left: 16, bottom: 10, right: 16)
         self.setNeedsLayout()
-
         self.labelsStackView.spacing = (detailedText != nil) ? 4.0 : 0.0
         self.labelsStackView.alignment = .leading
         self.addTarget(self, action: #selector(ToastView.showErrorLog), for: .touchUpInside)
@@ -126,17 +129,21 @@ class ToastView: UIControl
         self.opensErrorLog = opensLog
     }
 
+    enum InfoMode: String {
+        case fullError
+        case localizedDescription
+    }
+
     convenience init(error: Error) {
-        let nsError = error as NSError
-        let text = (nsError.userInfo[NSLocalizedFailureReasonErrorKey] as? String)
-            ?? NSLocalizedString("Operation Failed", comment: "")
-        let detail: String?
-        if let localized = error as? LocalizedError, let desc = localized.errorDescription, !desc.isEmpty {
-            detail = desc
-        } else {
-            detail = nsError.localizedDescription
-        }
-        self.init(text: text, detailText: detail)
+        self.init(error: error, mode: .localizedDescription)
+    }
+
+    convenience init(error: Error, mode: InfoMode) {
+        let error = error as NSError
+        let mode = mode == .fullError ? ErrorProcessing.InfoMode.fullError : ErrorProcessing.InfoMode.localizedDescription
+        let text = error.localizedTitle ?? NSLocalizedString("Operation Failed", comment: "")
+        let detailText = ErrorProcessing(mode).getDescription(error: error)
+        self.init(text: text, detailText: detailText)
     }
 
     required init(coder aDecoder: NSCoder) {
@@ -145,7 +152,6 @@ class ToastView: UIControl
 
     private func initialize() {
         edgeOffset = UIOffset(horizontal: 15, vertical: 15)
-
         dimmingView.backgroundColor = .black
         dimmingView.alpha = 0.1
         dimmingView.isHidden = true
@@ -157,60 +163,45 @@ class ToastView: UIControl
             dimmingView.leadingAnchor.constraint(equalTo: self.leadingAnchor),
             dimmingView.trailingAnchor.constraint(equalTo: self.trailingAnchor)
         ])
-
         stackView.axis = .horizontal
         stackView.alignment = .center
         stackView.spacing = 10
         stackView.isLayoutMarginsRelativeArrangement = true
         stackView.translatesAutoresizingMaskIntoConstraints = false
         self.addSubview(stackView)
-
         activityIndicatorView.color = .white
         activityIndicatorView.hidesWhenStopped = true
         activityIndicatorView.stopAnimating()
-
         textLabel.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
         textLabel.numberOfLines = 0
-
         detailTextLabel.font = UIFont.systemFont(ofSize: 15)
         detailTextLabel.numberOfLines = 0
-
         labelsStackView.axis = .vertical
         labelsStackView.alignment = .fill
         labelsStackView.addArrangedSubview(textLabel)
         labelsStackView.addArrangedSubview(detailTextLabel)
-
         stackView.addArrangedSubview(activityIndicatorView)
         stackView.addArrangedSubview(labelsStackView)
-
         NSLayoutConstraint.activate([
             stackView.topAnchor.constraint(equalTo: self.layoutMarginsGuide.topAnchor),
             stackView.bottomAnchor.constraint(equalTo: self.layoutMarginsGuide.bottomAnchor),
             stackView.leadingAnchor.constraint(equalTo: self.layoutMarginsGuide.leadingAnchor),
             stackView.trailingAnchor.constraint(equalTo: self.layoutMarginsGuide.trailingAnchor)
         ])
-
         self.layer.cornerRadius = 16
         self.clipsToBounds = true
-
         NotificationCenter.default.addObserver(self, selector: #selector(ToastView.toastViewWillShow(_:)), name: ToastView.willShowNotification, object: nil)
     }
 
-    deinit {
-        NotificationCenter.default.removeObserver(self)
-    }
+    deinit { NotificationCenter.default.removeObserver(self) }
 
-    override func layoutSubviews()
-    {
+    override func layoutSubviews() {
         super.layoutSubviews()
-
         if self.superview != nil, axisConstraint == nil {
             self.translatesAutoresizingMaskIntoConstraints = false
-
             let width = self.superview!.bounds.width - (edgeOffset.horizontal * 2) - self.superview!.safeAreaInsets.left - self.superview!.safeAreaInsets.right
             widthConstraint = self.widthAnchor.constraint(lessThanOrEqualToConstant: min(width, 400))
             heightConstraint = self.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
-
             switch presentationEdge {
             case .bottom:
                 axisConstraint = self.bottomAnchor.constraint(equalTo: self.superview!.safeAreaLayoutGuide.bottomAnchor, constant: -edgeOffset.vertical)
@@ -224,10 +215,8 @@ class ToastView: UIControl
             case .right:
                 axisConstraint = self.trailingAnchor.constraint(equalTo: self.superview!.safeAreaLayoutGuide.trailingAnchor, constant: -edgeOffset.horizontal)
                 hiddenAxisConstraint = self.leadingAnchor.constraint(equalTo: self.superview!.trailingAnchor)
-            case .none:
-                break
+            case .none: break
             }
-
             switch alignmentEdge {
             case .left:
                 alignmentConstraint = self.leadingAnchor.constraint(equalTo: self.superview!.safeAreaLayoutGuide.leadingAnchor, constant: edgeOffset.horizontal)
@@ -236,63 +225,45 @@ class ToastView: UIControl
             case .top, .bottom, .none:
                 alignmentConstraint = self.centerXAnchor.constraint(equalTo: self.superview!.centerXAnchor)
             }
-
-            NSLayoutConstraint.activate([
-                widthConstraint!,
-                heightConstraint!,
-                alignmentConstraint!,
-                hiddenAxisConstraint!
-            ].compactMap { $0 })
+            NSLayoutConstraint.activate([widthConstraint!, heightConstraint!, alignmentConstraint!, hiddenAxisConstraint!].compactMap { $0 })
         }
     }
 
-    func show(in viewController: UIViewController) {
-        self.show(in: viewController.view)
-    }
+    func show(in viewController: UIViewController) { self.show(in: viewController.view) }
+    func show(in view: UIView) { self.show(in: view, duration: self.preferredDuration) }
 
-    func show(in view: UIView) {
-        self.show(in: view, duration: self.preferredDuration)
-    }
-
-    func show(in view: UIView, duration: TimeInterval)
-    {
+    func show(in view: UIView, duration: TimeInterval) {
         dismissTimer?.invalidate()
-
         if duration > 0 {
-            dismissTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
-                self?.dismiss()
-            }
-        } else {
-            dismissTimer = nil
-        }
-
+            dismissTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in self?.dismiss() }
+        } else { dismissTimer = nil }
         if isShown { return }
-
         isShown = true
-
         textLabel.preferredMaxLayoutWidth = view.bounds.width
         detailTextLabel.preferredMaxLayoutWidth = view.bounds.width
-
         view.addSubview(self)
         view.layoutIfNeeded()
-
         hiddenAxisConstraint?.isActive = false
         axisConstraint?.isActive = true
 
-        let timingParameters = UISpringTimingParameters(stiffness: 750.0, dampingRatio: 1.0)
-        let animator = UIViewPropertyAnimator(springTimingParameters: timingParameters, animations: {
-            view.layoutIfNeeded()
-        })
-        animator.addCompletion { [weak self] (position: UIViewAnimatingPosition) in
+        var distance: CGFloat = 0
+        let overshoot: CGFloat = 10
+        switch self.presentationEdge {
+        case .left: distance = self.bounds.width + self.edgeOffset.horizontal + view.safeAreaInsets.left
+        case .right: distance = self.bounds.width + self.edgeOffset.horizontal + view.safeAreaInsets.right
+        case .top: distance = self.bounds.height + self.edgeOffset.vertical + view.safeAreaInsets.top
+        default: distance = self.bounds.height + self.edgeOffset.vertical + view.safeAreaInsets.bottom
+        }
+        let percentOvershoot = overshoot / distance
+        let dampingRatio = -log(percentOvershoot) / sqrt(pow(.pi, 2) + pow(log(percentOvershoot), 2))
+        let timingParameters = UISpringTimingParameters(stiffness: 750.0, dampingRatio: dampingRatio)
+        let animator = UIViewPropertyAnimator(springTimingParameters: timingParameters, animations: { view.layoutIfNeeded() })
+        animator.addCompletion { [weak self] _ in
             guard let self = self else { return }
-            if position == .end {
-                NotificationCenter.default.post(name: ToastView.didShowNotification, object: self)
-            }
+            NotificationCenter.default.post(name: ToastView.didShowNotification, object: self)
         }
         animator.startAnimation()
-
         NotificationCenter.default.post(name: ToastView.willShowNotification, object: self, userInfo: [ToastView.userInfoKeyPropertyAnimator: animator])
-
         let announcement = (self.textLabel.text ?? "") + ". " + (self.detailTextLabel.text ?? "")
         self.accessibilityLabel = announcement
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
@@ -302,57 +273,42 @@ class ToastView: UIControl
 
     @objc func dismiss() {
         if !isShown { return }
-
         isShown = false
         dismissTimer?.invalidate()
-
         if self.superview != nil {
             axisConstraint?.isActive = false
             hiddenAxisConstraint?.isActive = true
         }
-
         let timingParameters = UISpringTimingParameters(stiffness: 750.0, dampingRatio: 1.0)
         let animator = UIViewPropertyAnimator(springTimingParameters: timingParameters, animations: {
             self.superview?.layoutIfNeeded()
         })
-        animator.addCompletion { [weak self] (position: UIViewAnimatingPosition) in
+        animator.addCompletion { [weak self] position in
             guard let self = self else { return }
             if position != .end { return }
-
             self.removeFromSuperview()
-
             self.axisConstraint = nil
             self.hiddenAxisConstraint = nil
             self.alignmentConstraint = nil
-
             NotificationCenter.default.post(name: ToastView.didDismissNotification, object: self)
         }
         animator.startAnimation()
-
         NotificationCenter.default.post(name: ToastView.willDismissNotification, object: self, userInfo: [ToastView.userInfoKeyPropertyAnimator: animator])
     }
 
     @objc private func toastViewWillShow(_ notification: Notification) {
         guard let toastView = notification.object as? ToastView, toastView != self else { return }
-        if toastView.presentationEdge == self.presentationEdge {
-            dismiss()
-        }
+        if toastView.presentationEdge == self.presentationEdge { dismiss() }
     }
 
     override var isHighlighted: Bool {
-        get { return super.isHighlighted }
-        set {
-            super.isHighlighted = newValue
-            dimmingView.isHidden = !newValue
-        }
+        get { super.isHighlighted }
+        set { super.isHighlighted = newValue; dimmingView.isHidden = !newValue }
     }
 
     override var layoutMargins: UIEdgeInsets {
-        get { return super.layoutMargins }
-        set {
-            super.layoutMargins = newValue
-            stackView.layoutMargins = newValue
-        }
+        get { super.layoutMargins }
+        set { super.layoutMargins = newValue; stackView.layoutMargins = newValue }
     }
 }
 
@@ -367,9 +323,7 @@ extension ToastView {
     @MainActor
     static func present(text: String, detailText: String? = nil, duration: TimeInterval? = nil) {
         let toast = ToastView(text: text, detailText: detailText)
-        if let duration {
-            toast.preferredDuration = duration
-        }
+        if let duration { toast.preferredDuration = duration }
         toast.presentationEdge = .bottom
         guard let window = keyWindow() else { return }
         toast.show(in: window)
@@ -402,19 +356,8 @@ enum ToastCenter {
 
 @MainActor
 final class ToastCenterProxy {
-    func success(_ title: String, detail: String? = nil) {
-        ToastView.present(text: title, detailText: detail)
-    }
-
-    func error(_ title: String, detail: String? = nil) {
-        ToastView.present(text: title, detailText: detail)
-    }
-
-    func info(_ title: String, detail: String? = nil) {
-        ToastView.present(text: title, detailText: detail)
-    }
-
-    func error(_ error: Error) {
-        ToastView.presentError(error)
-    }
+    func success(_ title: String, detail: String? = nil) { ToastView.present(text: title, detailText: detail) }
+    func error(_ title: String, detail: String? = nil) { ToastView.present(text: title, detailText: detail) }
+    func info(_ title: String, detail: String? = nil) { ToastView.present(text: title, detailText: detail) }
+    func error(_ error: Error) { ToastView.presentError(error) }
 }
