@@ -153,14 +153,35 @@ class SharedModel: ObservableObject {
                 )
             }
 
-            guard restoredSession.isValid else {
-                throw SessionRestoreError.expiredSession
+            let activeSession: Session
+            let restoredAccount: Account
+
+            if restoredSession.isValid,
+               let account = try? await DeveloperPortal.shared.fetchAccount(session: restoredSession) {
+                activeSession = restoredSession
+                restoredAccount = account
+            } else {
+                // Refresh an expired or rejected session with the saved Apple ID credentials.
+                guard let email = keychain.appleIDEmailAddress,
+                      let password = keychain.appleIDPassword,
+                      !password.isEmpty else {
+                    throw SessionRestoreError.expiredSession
+                }
+
+                let anisetteData = try await DataManager.fetchAnisetteData()
+                let authentication = try await DeveloperPortal.shared.authenticate(
+                    appleID: email,
+                    password: password,
+                    anisetteData: anisetteData,
+                    xcodeVersion: "26.0"
+                )
+                activeSession = authentication.session
+                restoredAccount = authentication.account
             }
 
-            let restoredAccount = try await DeveloperPortal.shared.fetchAccount(session: restoredSession)
             let restoredTeams = try await DeveloperPortal.shared.fetchTeams(
                 for: restoredAccount,
-                session: restoredSession
+                session: activeSession
             )
 
             let savedTeam: Team? = keychain.sessionTeam.flatMap {
@@ -175,14 +196,14 @@ class SharedModel: ObservableObject {
             }
 
             await MainActor.run {
-                self.session = restoredSession
+                self.session = activeSession
                 self.account = restoredAccount
                 self.team = selectedTeam
                 self.isLogin = true
                 self.sessionRestoreFailed = false
             }
 
-            persistSession(restoredSession, account: restoredAccount)
+            persistSession(activeSession, account: restoredAccount)
             persistSelectedTeam(selectedTeam)
         } catch {
             await MainActor.run {
