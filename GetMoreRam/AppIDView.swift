@@ -41,11 +41,9 @@ struct AppIDEditView: View {
     func addIncreasedMemoryLimit() async {
         do {
             try await viewModel.addIncreasedMemory()
-            ToastCenter.shared.success("Increased memory limit", detail: viewModel.bundleID)
         } catch {
             errorInfo = error.detailedDescription
             errorShow = true
-            ToastCenter.shared.error("Failed", detail: error.detailedDescription)
         }
     }
 }
@@ -55,6 +53,7 @@ struct AppIDView: View {
 
     @State private var errorShow = false
     @State private var errorInfo = ""
+    @State private var statusMessage = ""
 
     var body: some View {
         NavigationView {
@@ -69,6 +68,14 @@ struct AppIDView: View {
                     }
                 } header: {
                     Text("App IDs")
+                }
+
+                if !statusMessage.isEmpty {
+                    Section {
+                        Text(statusMessage)
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                    }
                 }
 
                 Section {
@@ -99,16 +106,16 @@ struct AppIDView: View {
         } catch {
             errorInfo = error.detailedDescription
             errorShow = true
-            ToastCenter.shared.error("Could not load App IDs", detail: error.detailedDescription)
         }
     }
 
     func fireAllButtonClicked() async {
         do {
             try await viewModel.addIncreasedMemoryLimitToAll()
-            ToastCenter.shared.success("Successfully fired all apps!")
+            statusMessage = "Successfully updated all apps."
         } catch {
-            ToastCenter.shared.error("Fire All failed", detail: error.detailedDescription)
+            errorInfo = error.detailedDescription
+            errorShow = true
         }
     }
 }

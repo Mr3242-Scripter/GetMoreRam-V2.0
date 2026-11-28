@@ -37,11 +37,6 @@ struct SettingsView: View {
     private var serverDisplayName: String {
         let url = sharedModel.anisetteServerURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalized = AnisetteDefaults.serverURL(forHost: url)
-        if let match = AnisetteServerStore.allServers().first(where: {
-            $0.normalizedAddress.caseInsensitiveCompare(normalized) == .orderedSame
-        }) {
-            return match.name
-        }
         return normalized.isEmpty ? "Select…" : normalized
     }
 
@@ -428,7 +423,6 @@ struct SettingsView: View {
         } catch {
             errorInfo = error.detailedDescription
             errorShow = true
-            ToastCenter.shared.error("Sign in failed", detail: error.detailedDescription)
         }
     }
 
@@ -454,7 +448,6 @@ struct SettingsView: View {
         viewModel.teamSelectionShow = false
         email = ""
         teamId = ""
-        ToastCenter.shared.info("Keychain cleaned")
     }
 
     func refreshAccountLabels() {
@@ -508,16 +501,13 @@ struct SettingsView: View {
             importResultShow = true
             pendingSideStoreFile = nil
             sideStoreFilePassword = ""
-            ToastCenter.shared.success("Account imported", detail: account.email)
         } catch SideStoreImportError.wrongPassword {
             sideStorePasswordMessage = "Wrong file password. Enter the password you chose when exporting from SideStore."
             sideStoreFilePassword = ""
             showSideStorePasswordPrompt = true
-            ToastCenter.shared.error("Wrong file password")
         } catch {
             errorInfo = error.localizedDescription
             errorShow = true
-            ToastCenter.shared.error("Import failed", detail: error.localizedDescription)
         }
     }
 
@@ -527,7 +517,6 @@ struct SettingsView: View {
         if client.isEmpty || ua.isEmpty {
             anisetteSaveMessage = "Client Info and User Agent cannot be empty."
             showAnisetteSaveAlert = true
-            ToastCenter.shared.error("Cannot save", detail: "Client Info and User Agent cannot be empty.")
             return
         }
         sharedModel.anisetteClientInfo = client
@@ -536,7 +525,6 @@ struct SettingsView: View {
         draftUserAgent = ua
         anisetteSaveMessage = "Saved Client Info and User Agent."
         showAnisetteSaveAlert = true
-        ToastCenter.shared.success("Saved", detail: "Client Info and User Agent updated.")
     }
 
     func resetAnisetteHeaders() {
@@ -549,7 +537,6 @@ struct SettingsView: View {
         }
         anisetteSaveMessage = "Reset Client Info and User Agent to SideStore Mac ADI defaults."
         showAnisetteSaveAlert = true
-        ToastCenter.shared.info("Reset to defaults", detail: "SideStore Mac ADI Client Info and User Agent restored.")
     }
 
     func selectTeam(_ team: Team) {
@@ -560,7 +547,6 @@ struct SettingsView: View {
         teamId = team.identifier
         viewModel.availableTeams = []
         viewModel.teamSelectionShow = false
-        ToastCenter.shared.success("Signed in", detail: team.name)
     }
 
     func cancelTeamSelection() {

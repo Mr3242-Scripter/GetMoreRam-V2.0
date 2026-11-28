@@ -169,7 +169,6 @@ final class UpdateViewModel: ObservableObject {
             guard (200..<300).contains(status) else {
                 errorMessage = "GitHub returned HTTP \(status)."
                 statusMessage = ""
-                ToastView.present(text: "Update check failed", detailText: errorMessage)
                 return
             }
 
@@ -178,7 +177,6 @@ final class UpdateViewModel: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
             statusMessage = ""
-            ToastView.presentError(error)
         }
     }
 
@@ -217,10 +215,8 @@ final class UpdateViewModel: ObservableObject {
 
         if updateAvailable {
             statusMessage = "Update available: \(release.displayTitle)"
-            ToastView.present(text: "Update available", detailText: release.displayTitle)
         } else {
             statusMessage = "You're up to date (\(currentVersion))."
-            ToastView.present(text: "You're up to date", detailText: currentVersion)
         }
     }
 
@@ -245,7 +241,7 @@ final class UpdateViewModel: ObservableObject {
 
     func performUpdate() async {
         guard let latest else {
-            ToastView.present(text: "Check for updates first")
+            statusMessage = "Check for updates first."
             return
         }
 
@@ -277,7 +273,6 @@ final class UpdateViewModel: ObservableObject {
         guard let ipaURL = release.ipaDownloadURL else {
             statusMessage = "No .ipa asset on this release. Opening release page."
             openReleasePage()
-            ToastView.present(text: "No IPA on release", detailText: "Open the release and install manually.")
             return
         }
 
@@ -287,7 +282,6 @@ final class UpdateViewModel: ObservableObject {
            UIApplication.shared.canOpenURL(URL(string: "sidestore://")!) {
             statusMessage = "Opening SideStore…"
             await UIApplication.shared.open(side)
-            ToastView.present(text: "Opening SideStore", detailText: "Confirm the install when SideStore appears.")
             return
         }
 
@@ -295,25 +289,21 @@ final class UpdateViewModel: ObservableObject {
            UIApplication.shared.canOpenURL(URL(string: "altstore://")!) {
             statusMessage = "Opening AltStore…"
             await UIApplication.shared.open(alt)
-            ToastView.present(text: "Opening AltStore", detailText: "Confirm the install when AltStore appears.")
             return
         }
 
         statusMessage = "SideStore not available. Opening IPA link."
         await UIApplication.shared.open(ipaURL)
-        ToastView.present(text: "SideStore not found", detailText: "Opened the IPA download instead.")
     }
 
     private func updateViaLiveContainer(release: GitHubRelease) async {
         guard let ipaURL = release.ipaDownloadURL else {
             statusMessage = "No .ipa asset on this release. Opening release page."
             openReleasePage()
-            ToastView.present(text: "No IPA on release", detailText: "Import the IPA in LiveContainer manually.")
             return
         }
 
         statusMessage = "Downloading IPA for LiveContainer…"
-        ToastView.present(text: "Downloading update…")
 
         do {
             let localIPA = try await downloadIPA(from: ipaURL)
@@ -323,16 +313,13 @@ final class UpdateViewModel: ObservableObject {
             if let lcInstall = URL(string: "livecontainer://install?url=\(encodedRemote)"),
                UIApplication.shared.canOpenURL(URL(string: "livecontainer://")!) {
                 await UIApplication.shared.open(lcInstall)
-                ToastView.present(text: "Opening LiveContainer", detailText: "Confirm install / restart when prompted.")
                 return
             }
 
             await openLocalFile(localIPA)
-            ToastView.present(text: "IPA ready", detailText: "Choose LiveContainer to import the update.")
         } catch {
             errorMessage = error.localizedDescription
             statusMessage = "Download failed."
-            ToastView.presentError(error)
         }
     }
 
@@ -408,7 +395,6 @@ final class UpdateViewModel: ObservableObject {
         } else if let page = URL(string: release.htmlURL) {
             Task { await UIApplication.shared.open(page) }
         }
-        ToastView.present(text: "Opening download")
     }
 
     func openReleasePage() {
