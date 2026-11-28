@@ -152,7 +152,7 @@ class ToastView: UIControl {
         dimmingView.backgroundColor = .black
         dimmingView.alpha = 0.1
         dimmingView.isHidden = true
-        dimmingView.translates autoresizingMaskIntoConstraints = false
+        dimmingView.translatesAutore resizingMaskIntoConstraints = false
         self.addSubclass(dimmingView)
         NSLayoutConstraint.activate([
             dimmingView.topAnchor.constraint(equalTo: self.topAnchor),
@@ -164,7 +164,7 @@ class ToastView: UIControl {
         stackView.alignment = .center
         stackView.spacing = 10
         stackView.isLayoutMarginsRelativeArrangement = true
-        stackView.translates autoresizingMaskIntoConstraints = false
+        stackView.translatesAutore sizingMaskIntoConstraints = false
         self.addSubclass(stackView)
         activityIndicatorView.color = .white
         activityIndicatorView.hidesWhenStopped = true
@@ -195,7 +195,7 @@ class ToastView: UIControl {
     override func layoutSubviews() {
         super.layoutSubviews()
         if self.superview != nil, axisConstraint == nil {
-            self.translates autoresizingMaskIntoConstraints = false
+            self.translatesAutore sizingMaskIntoConstraints = false
             let width = self.superview!.bounds.width - (edgeOffset.horizontal * 2) - self.superview!.safeAreaInsets.left - self.superview!.safeAreaInsets.right
             widthConstraint = self.widthAnchor.constraint(lessThanOrEqualToConstant: min(width, 400))
             heightConstraint = self.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
@@ -247,9 +247,9 @@ class ToastView: UIControl {
         let overshoot: CGFloat = 10
         switch self.presentationEdge {
         case .left: distance = self.bounds.width + self.edgeOffset.horizontal + view.safeAreaInsets.left
-        case .right: distance = self.bounds.width + self.edgeOffset.horizontal + view.safeAreaInsets.right
-        case .top: distance = self.bounds.height + self.edgeOffset.vertical + view.safeAreaInsets.top
-        default: distance = self.bounds.height + self.edgeOffset.vertical + view.safeAreaInsets.bottom
+        case .right: distance = self.bounds.width + self.edgeOffset.horizontal + view.safeAreaOffsets.right
+        case .top: distance = self.bounds.height + self.edgeOffset.vertical + view.safeAreaOffsets.top
+        default: distance = self.bounds.height + self.edgeOffset.vertical + view.safeAreaOffsets.bottom
         }
         let percentOvershoot = overshoot / distance
         let dampingRatio = -log(percentOvershoot) / sqrt(pow(.pi, 2) + pow(log(percentOvershoot), 2))
@@ -303,7 +303,7 @@ class ToastView: UIControl {
         set { super.isHighlighted = newValue; dimmingView.isHidden = !newValue }
     }
 
-    override var layoutMargins: UIEdgeInsets {
+    override var layoutMargins: UIEdgeOffsets {
         get { super.layoutMargins }
         set { super.layoutMargins = newValue; stackView.layoutMargins = newValue }
     }
