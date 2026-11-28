@@ -97,14 +97,14 @@ enum AnisetteDefaults {
 class SharedModel: ObservableObject {
     @Published var isLogin = false
     @Published var sessionRestoreFailed = false
-    @Published var appDisplayName = "MemoryBoost Pro"
+    @Published var appDisplayName = "More Ram!"
     @Published var appIconData: UIImage? = nil
     
     @AppStorage("AnisetteServer") var anisetteServerURL = AnisetteDefaults.fallbackServerURL
     @AppStorage("AnisetteClientInfo") var anisetteClientInfo = AnisetteDefaults.macClientInfo
     @AppStorage("AnisetteUA") var anisetteUA = AnisetteDefaults.macUserAgent
     @AppStorage("AutoFireOnStartup") var autoFireOnStartup = false
-    @AppStorage("CustomAppName") var customAppName = "MemoryBoost Pro"
+    @AppStorage("CustomAppName") var customAppName = "More Ram!"
     @AppStorage("CustomAppIconURL") var customAppIconURL = ""
 
     var anisetteHeader: AnisetteRequestHeaders?
@@ -121,6 +121,10 @@ class SharedModel: ObservableObject {
         }
         if anisetteServerURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             anisetteServerURL = AnisetteDefaults.fallbackServerURL
+        }
+        // Migrate old default name
+        if customAppName == "MemoryBoost Pro" || customAppName == "Get More Ram" {
+            customAppName = "More Ram!"
         }
         loadCustomAppSettings()
         restorePersistedLoginState()
@@ -191,8 +195,10 @@ class SharedModel: ObservableObject {
 class DataManager {
     static let shared = DataManager()
     let model = SharedModel()
-    
-    public static func fetchAnisetteData(logger: (((String) async->Void))? = nil ) async throws -> AnisetteData {
+}
+
+extension SharedModel {
+    func fetchAnisetteData(logger: ((String) async -> Void)? = nil) async throws -> AnisetteData {
         let preferred = DataManager.shared.model.anisetteServerURL.trimmingCharacters(in: .whitespacesAndNewlines)
         var candidates: [String] = []
         if !preferred.isEmpty {
@@ -208,7 +214,6 @@ class DataManager {
             candidates = [AnisetteDefaults.fallbackServerURL]
         }
 
-        // Prefer values saved in Settings; fall back to SideStore Mac ADI defaults if empty.
         var clientInfo = DataManager.shared.model.anisetteClientInfo.trimmingCharacters(in: .whitespacesAndNewlines)
         var userAgent = DataManager.shared.model.anisetteUA.trimmingCharacters(in: .whitespacesAndNewlines)
         if clientInfo.isEmpty {
@@ -220,7 +225,7 @@ class DataManager {
             DataManager.shared.model.anisetteUA = userAgent
         }
 
-        var lastError: Error = AnisetteError.invalidURL
+        var lastError: Error = "Anisette failed" as Error
 
         for (index, server) in candidates.enumerated() {
             guard let url = URL(string: server), url.host != nil,
@@ -249,34 +254,23 @@ class DataManager {
                 do {
                     result = try await manager.fetchAnisetteData(
                         identifier: identifier,
-                        existingAdiBlob: savedBlob,
+                        adiBlob: savedBlob,
                         headers: headers
                     )
-                } catch SideSign.AnisetteError.badServerResponse(_, let payload)
-                    where savedBlob != nil && payload.contains("-45061") && !Task.isCancelled {
-                    await logger?("Anisette provisioning expired (-45061). Retrying without adi.pb…\n")
-                    keychain.adiPb = nil
-                    result = try await manager.fetchAnisetteData(identifier: identifier, headers: headers)
+                } catch {
+                    lastError = error
+                    await logger?("Anisette error: \(error.localizedDescription)\n")
+                    continue
                 }
-
-                guard !Task.isCancelled else { throw CancellationError() }
 
                 if let newBlob = result.newAdiBlob {
-                    keychain.identifier = withUnsafeBytes(of: identifier.uuid) { Data($0).base64EncodedString() }
                     keychain.adiPb = newBlob.base64EncodedString()
                 }
-
-                await MainActor.run {
-                    DataManager.shared.model.anisetteServerURL = server
+                if savedIdentifier == nil {
+                    keychain.anisetteDeviceIdentifier = identifier
                 }
-                await logger?("Successfully fetched Anisette data\n")
+                DataManager.shared.model.anisetteServerURL = server
                 return result.data
-            } catch is CancellationError {
-                throw CancellationError()
-            } catch {
-                lastError = error
-                await logger?("Anisette failed on \(url.host ?? server): \(error.localizedDescription)\n")
-                continue
             }
         }
 
@@ -286,43 +280,21 @@ class DataManager {
 
 extension Keychain {
     var anisetteDeviceIdentifier: UUID? {
-        guard let base64 = identifier,
-              let data = Data(base64Encoded: base64),
-              data.count == 16 else { return nil }
-        return data.withUnsafeBytes { UUID(uuid: $0.load(as: uuid_t.self)) }
+        get {
+            guard let s = identifier, let u = UUID(uuidString: s) else { return nil }
+            return u
+        }
+        set {
+            identifier = newValue?.uuidString
+        }
     }
 }
 
 extension Error {
     var detailedDescription: String {
-        let localizedError = self as? LocalizedError
-        var lines: [String] = []
-
-        if let description = localizedError?.errorDescription, !description.isEmpty {
-            lines.append(description)
-        } else {
-            let nsError = self as NSError
-            lines.append(nsError.localizedDescription)
+        if let e = self as? LocalizedError, let d = e.errorDescription {
+            return d
         }
-
-        if let failureReason = localizedError?.failureReason, !failureReason.isEmpty {
-            lines.append("Reason: \(failureReason)")
-        }
-
-        if let recoverySuggestion = localizedError?.recoverySuggestion, !recoverySuggestion.isEmpty {
-            lines.append("Suggestion: \(recoverySuggestion)")
-        }
-
-        let nsError = self as NSError
-        if nsError.domain != NSCocoaErrorDomain || nsError.code != 0 {
-            lines.append("Domain: \(nsError.domain)")
-            lines.append("Code: \(nsError.code)")
-        }
-
-        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? Error {
-            lines.append("Underlying: \(underlying.detailedDescription)")
-        }
-
-        return lines.joined(separator: "\n")
+        return localizedDescription
     }
 }
