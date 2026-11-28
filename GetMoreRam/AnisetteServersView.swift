@@ -2,94 +2,51 @@
 //  AnisetteServersView.swift
 //  GetMoreRam
 //
-//  SideStore-style anisette server picker: choose a server or add a custom one.
+//  UI aligned with SideStore AnisetteServersView:
+//  remote catalog (servers.sidestore.io), Auto Mac ADI, custom servers,
+//  selection via UserDefaults.menuAnisetteURL (SideStore key).
 //
 
 import SwiftUI
 
-struct AnisetteServerEntry: Identifiable, Codable, Hashable {
-    var id: String { normalizedAddress }
-    var name: String
-    var address: String
-    var isCustom: Bool
-
-    var normalizedAddress: String {
-        AnisetteDefaults.serverURL(
-            forHost: address.trimmingCharacters(in: .whitespacesAndNewlines)
-        )
-    }
-}
-
-enum AnisetteServerStore {
-    private static let customKey = "CustomAnisetteServersJSON"
-
-    static func builtInServers() -> [AnisetteServerEntry] {
-        AnisetteDefaults.macADIOrder.map { host in
-            AnisetteServerEntry(
-                name: host,
-                address: AnisetteDefaults.serverURL(forHost: host),
-                isCustom: false
-            )
-        }
-    }
-
-    static func loadCustom() -> [AnisetteServerEntry] {
-        guard let data = UserDefaults.standard.data(forKey: customKey),
-              let decoded = try? JSONDecoder().decode([AnisetteServerEntry].self, from: data) else {
-            return []
-        }
-        return decoded.map {
-            AnisetteServerEntry(
-                name: $0.name,
-                address: $0.normalizedAddress,
-                isCustom: true
-            )
-        }
-    }
-
-    static func saveCustom(_ servers: [AnisetteServerEntry]) {
-        let customOnly = servers.filter { $0.isCustom }.map {
-            AnisetteServerEntry(
-                name: $0.name,
-                address: $0.normalizedAddress,
-                isCustom: true
-            )
-        }
-        if let data = try? JSONEncoder().encode(customOnly) {
-            UserDefaults.standard.set(data, forKey: customKey)
-        }
-    }
-
-    static func allServers() -> [AnisetteServerEntry] {
-        var list = builtInServers()
-        let custom = loadCustom()
-        for c in custom where !list.contains(where: {
-            $0.normalizedAddress.caseInsensitiveCompare(c.normalizedAddress) == .orderedSame
-        }) {
-            list.append(c)
-        }
-        return list
-    }
-}
-
 struct AnisetteServersView: View {
     @EnvironmentObject private var sharedModel: SharedModel
-    @State private var servers: [AnisetteServerEntry] = []
+    @State private var servers: [AnisetteServerItem] = []
+    @State private var isLoading = false
+    @State private var errorMessage: String?
     @State private var showAddSheet = false
     @State private var newName = ""
     @State private var newAddress = ""
     @State private var addError = ""
+    @State private var isAuto = true
 
     private var selectedURL: String {
-        AnisetteDefaults.serverURL(
-            forHost: sharedModel.anisetteServerURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        )
+        UserDefaults.standard.menuAnisetteURL
     }
 
     var body: some View {
         List {
             Section {
-                ForEach(servers) { server in
+                Toggle("Auto (rotate Mac ADI servers)", isOn: Binding(
+                    get: { AnisetteProvider.isAutoEnabled },
+                    set: { enabled in
+                        AnisetteProvider.setAutoEnabled(enabled)
+                        isAuto = enabled
+                    }
+                ))
+            } footer: {
+                Text("Same as SideStore Auto: tries Mac ADI hosts in order when enabled.")
+            }
+
+            Section {
+                if isLoading {
+                    HStack {
+                        ProgressView()
+                        Text("Loading servers…")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                ForEach(servers.filter { !$0.isHidden }) { server in
                     Button {
                         select(server)
                     } label: {
@@ -98,7 +55,7 @@ struct AnisetteServersView: View {
                                 Text(server.name)
                                     .foregroundStyle(.primary)
                                     .fontWeight(isSelected(server) ? .semibold : .regular)
-                                Text(server.normalizedAddress)
+                                Text(server.address)
                                     .font(.footnote)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(2)
@@ -106,24 +63,19 @@ struct AnisetteServersView: View {
                             Spacer()
                             if isSelected(server) {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.tint)
-                            }
-                            if server.isCustom {
-                                Text("Custom")
-                                    .font(.caption2)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Color.secondary.opacity(0.15))
-                                    .clipShape(Capsule())
+                                    .foregroundStyle(Color(UIColor.altPrimary))
                             }
                         }
                     }
                 }
-                .onDelete(perform: deleteCustom)
             } header: {
                 Text("Servers")
             } footer: {
-                Text("Tap a server to use it for anisette. Swipe left on a custom server to remove it. Built-in servers match SideStore Mac ADI rotation.")
+                if let errorMessage {
+                    Text(errorMessage).foregroundStyle(.red)
+                } else {
+                    Text("Catalog from \(AppConstants.Anisette.Servers.defaultSource). Tap to select. Custom servers can be added below.")
+                }
             }
 
             Section {
@@ -135,11 +87,15 @@ struct AnisetteServersView: View {
                 } label: {
                     Label("Add Custom Server", systemImage: "plus.circle.fill")
                 }
+
+                Button("Refresh from SideStore catalog") {
+                    Task { await refresh(force: true) }
+                }
             }
         }
         .navigationTitle("Anisette Servers")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { reload() }
+        .task { await refresh(force: false) }
         .sheet(isPresented: $showAddSheet) {
             NavigationView {
                 Form {
@@ -150,25 +106,17 @@ struct AnisetteServersView: View {
                             .autocorrectionDisabled()
                             .keyboardType(.URL)
                     } footer: {
-                        Text("Example: https://ani.example.com or ani.example.com")
+                        Text("Example: https://ani.example.com")
                     }
-
                     if !addError.isEmpty {
-                        Section {
-                            Text(addError)
-                                .foregroundStyle(.red)
-                                .font(.footnote)
-                        }
+                        Text(addError).foregroundStyle(.red).font(.footnote)
                     }
-
                     Section {
-                        Button("Add Server") {
-                            addCustom()
-                        }
-                        .disabled(
-                            newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-                            newAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        )
+                        Button("Add Server") { addCustom() }
+                            .disabled(
+                                newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                                newAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            )
                     }
                 }
                 .navigationTitle("Custom Server")
@@ -182,67 +130,71 @@ struct AnisetteServersView: View {
         }
     }
 
-    private func reload() {
-        servers = AnisetteServerStore.allServers()
+    private func isSelected(_ server: AnisetteServerItem) -> Bool {
+        server.address.caseInsensitiveCompare(selectedURL) == .orderedSame
     }
 
-    private func isSelected(_ server: AnisetteServerEntry) -> Bool {
-        server.normalizedAddress.caseInsensitiveCompare(selectedURL) == .orderedSame
-    }
-
-    private func select(_ server: AnisetteServerEntry) {
-        sharedModel.anisetteServerURL = server.normalizedAddress
+    private func select(_ server: AnisetteServerItem) {
+        AnisetteProvider.setAutoEnabled(false)
+        UserDefaults.standard.disableAnisetteRotation = true
+        UserDefaults.standard.menuAnisetteURL = server.address
+        sharedModel.anisetteServerURL = server.address
+        isAuto = false
         ToastView.present(text: "Anisette server selected", detailText: server.name)
+    }
+
+    private func refresh(force: Bool) async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        do {
+            let items = try await AnisetteServersManager.shared.syncWithRemote(forceRemote: force)
+            await MainActor.run {
+                servers = items
+                if servers.isEmpty {
+                    servers = AppConstants.Anisette.Servers.macADIOrder.map {
+                        AnisetteServerItem(name: $0, address: "https://\($0)")
+                    }
+                }
+            }
+        } catch {
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+                if servers.isEmpty {
+                    servers = AppConstants.Anisette.Servers.macADIOrder.map {
+                        AnisetteServerItem(name: $0, address: "https://\($0)")
+                    }
+                }
+            }
+        }
+        isAuto = AnisetteProvider.isAutoEnabled
     }
 
     private func addCustom() {
         let name = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let address = newAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        var address = newAddress.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty, !address.isEmpty else {
             addError = "Name and URL are required."
             return
         }
-        let entry = AnisetteServerEntry(name: name, address: address, isCustom: true)
-        let url = entry.normalizedAddress
-        guard let parsed = URL(string: url), parsed.host != nil else {
+        if !address.hasPrefix("http://") && !address.hasPrefix("https://") {
+            address = "https://\(address)"
+        }
+        guard URL(string: address)?.host != nil else {
             addError = "Invalid URL or host."
             return
         }
-
-        var custom = AnisetteServerStore.loadCustom()
-        if custom.contains(where: {
-            $0.normalizedAddress.caseInsensitiveCompare(url) == .orderedSame
-        }) {
-            addError = "That server is already in your list."
+        let item = AnisetteServerItem(name: name, address: address)
+        if servers.contains(where: { $0.address.caseInsensitiveCompare(address) == .orderedSame }) {
+            addError = "That server is already in the list."
             return
         }
-        custom.append(entry)
-        AnisetteServerStore.saveCustom(custom)
-        sharedModel.anisetteServerURL = url
-        reload()
+        servers.insert(item, at: 0)
+        Task {
+            await AnisetteServersManager.shared.saveLocalServers(servers)
+        }
+        select(item)
         showAddSheet = false
         ToastView.present(text: "Custom server added", detailText: name)
-    }
-
-    private func deleteCustom(at offsets: IndexSet) {
-        var custom = AnisetteServerStore.loadCustom()
-        let toDelete = offsets.compactMap { index -> AnisetteServerEntry? in
-            guard index < servers.count else { return nil }
-            let s = servers[index]
-            return s.isCustom ? s : nil
-        }
-        guard !toDelete.isEmpty else { return }
-        custom.removeAll { c in
-            toDelete.contains(where: {
-                $0.normalizedAddress.caseInsensitiveCompare(c.normalizedAddress) == .orderedSame
-            })
-        }
-        AnisetteServerStore.saveCustom(custom)
-
-        // If selected server was deleted, fall back to default
-        if toDelete.contains(where: { isSelected($0) }) {
-            sharedModel.anisetteServerURL = AnisetteDefaults.fallbackServerURL
-        }
-        reload()
     }
 }
