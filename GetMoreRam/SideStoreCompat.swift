@@ -2,8 +2,7 @@
 //  SideStoreCompat.swift
 //  GetMoreRam
 //
-//  Minimal stubs so SideStore Toast / Anisette server sources compile without
-//  the full SideStore app target.
+//  Stubs + types so exact SideStore Toast / Anisette sources compile in this app.
 //
 
 import Foundation
@@ -35,6 +34,33 @@ enum AppConstants {
             static let macClientInfo = "<MacBookPro18,3> <macOS;26.6;25F84> <com.apple.AuthKit/1 (com.apple.akd/1.0)>"
             static let macUserAgent = "AuthKit/1 (Macintosh; OS X 26.6) (com.apple.akd/1.0)"
         }
+    }
+}
+
+/// SideStore ODA metadata (unused by GetMoreRam fetch path).
+struct ODAValue: Codable, Hashable {}
+
+struct Server: Codable, Identifiable, Hashable {
+    var id: String { address }
+    var name: String
+    var address: String
+}
+
+struct AnisetteServerData: Codable {
+    let servers: [Server]
+    let oda: ODAValue?
+
+    enum CodingKeys: String, CodingKey { case servers, oda }
+
+    init(servers: [Server], oda: ODAValue? = nil) {
+        self.servers = servers
+        self.oda = oda
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        servers = (try? c.decode([Server].self, forKey: .servers)) ?? []
+        oda = try? c.decodeIfPresent(ODAValue.self, forKey: .oda)
     }
 }
 
@@ -87,11 +113,9 @@ extension FileManager {
     var documentsDirectory: URL {
         urls(for: .documentDirectory, in: .userDomainMask).first!
     }
-
     var applicationSupportDirectory: URL {
         urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
     }
-
     var cachesDirectory: URL {
         urls(for: .cachesDirectory, in: .userDomainMask).first!
     }
@@ -109,16 +133,9 @@ extension UIApplication {
             }
             return scenes.flatMap { $0.windows }.first?.rootViewController
         }()
-
-        if let nav = base as? UINavigationController {
-            return topViewController(base: nav.visibleViewController)
-        }
-        if let tab = base as? UITabBarController {
-            return topViewController(base: tab.selectedViewController)
-        }
-        if let presented = base?.presentedViewController {
-            return topViewController(base: presented)
-        }
+        if let nav = base as? UINavigationController { return topViewController(base: nav.visibleViewController) }
+        if let tab = base as? UITabBarController { return topViewController(base: tab.selectedViewController) }
+        if let presented = base?.presentedViewController { return topViewController(base: presented) }
         return base
     }
 }
@@ -130,9 +147,7 @@ enum AnisetteProvider {
     static let fallbackServerURL = "https://new.ani.sidestore.io"
 
     static var isAutoEnabled: Bool {
-        if UserDefaults.standard.object(forKey: "anisetteServerAuto") == nil {
-            return true
-        }
+        if UserDefaults.standard.object(forKey: "anisetteServerAuto") == nil { return true }
         return UserDefaults.standard.bool(forKey: "anisetteServerAuto")
     }
 
@@ -148,13 +163,34 @@ enum AnisetteProvider {
     }
 }
 
+extension UIColor {
+    /// SideStore brand primary (matches ToastView hardcoded cyan-blue when asset missing).
+    static var altPrimary: UIColor {
+        if let c = UIColor(named: "Primary", in: .main, compatibleWith: nil) { return c }
+        return UIColor(red: 61.0/255.0, green: 172.0/255.0, blue: 247.0/255.0, alpha: 1)
+    }
+}
+
+extension UISpringTimingParameters {
+    convenience init(stiffness: CGFloat, dampingRatio: CGFloat) {
+        let mass: CGFloat = 1.0
+        let damping = 2.0 * dampingRatio * sqrt(stiffness * mass)
+        self.init(mass: mass, stiffness: stiffness, damping: damping, initialVelocity: .zero)
+    }
+}
+
+extension UIViewPropertyAnimator {
+    convenience init(springTimingParameters: UITimingCurveProvider, animations: (() -> Void)?) {
+        self.init(duration: 0.5, timingParameters: springTimingParameters)
+        if let animations { addAnimations(animations) }
+    }
+}
+
 struct ActivityViewController: UIViewControllerRepresentable {
     var activityItems: [Any]
     var applicationActivities: [UIActivity]? = nil
-
     func makeUIViewController(context: Context) -> UIActivityViewController {
         UIActivityViewController(activityItems: activityItems, applicationActivities: applicationActivities)
     }
-
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
