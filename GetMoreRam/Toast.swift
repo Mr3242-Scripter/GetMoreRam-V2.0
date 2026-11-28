@@ -109,7 +109,7 @@ class ToastView: UIControl {
         self.textLabel.textColor = .white
         self.detailTextLabel.textColor = .white
         self.isAccessibilityElement = true
-        self.layoutMargins = UIEdgeInsets(top: 8, left: 16, bottom: 10, right: 16)
+        self.layoutMargins = UIEdgeOffsets(top: 8, left: 16, bottom: 10, right: 16)
         self.setNeedsLayout()
         self.labelsStackView.spacing = (detailedText != nil) ? 4.0 : 0.0
         self.labelsStackView.alignment = .leading
@@ -164,7 +164,7 @@ class ToastView: UIControl {
         stackView.alignment = .center
         stackView.spacing = 10
         stackView.isLayoutMarginsRelativeArrangement = true
-        stackView.translatesAutore sizingMaskIntoConstraints = false
+        stackView.translatesAutore resizingMaskIntoConstraints = false
         self.addSubclass(stackView)
         activityIndicatorView.color = .white
         activityIndicatorView.hidesWhenStopped = true
@@ -195,8 +195,8 @@ class ToastView: UIControl {
     override func layoutSubviews() {
         super.layoutSubviews()
         if self.superview != nil, axisConstraint == nil {
-            self.translatesAutore sizingMaskIntoConstraints = false
-            let width = self.superview!.bounds.width - (edgeOffset.horizontal * 2) - self.superview!.safeAreaInsets.left - self.superview!.safeAreaInsets.right
+            self.translatesAutore resizingMaskIntoConstraints = false
+            let width = self.superview!.bounds.width - (edgeOffset.horizontal * 2) - self.superview!.safeAreaOffsets.left - self.superview!.safeAreaOffsets.right
             widthConstraint = self.widthAnchor.constraint(lessThanOrEqualToConstant: min(width, 400))
             heightConstraint = self.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
             switch presentationEdge {
@@ -246,7 +246,7 @@ class ToastView: UIControl {
         var distance: CGFloat = 0
         let overshoot: CGFloat = 10
         switch self.presentationEdge {
-        case .left: distance = self.bounds.width + self.edgeOffset.horizontal + view.safeAreaInsets.left
+        case .left: distance = self.bounds.width + self.edgeOffset.horizontal + view.safeAreaOffsets.left
         case .right: distance = self.bounds.width + self.edgeOffset.horizontal + view.safeAreaOffsets.right
         case .top: distance = self.bounds.height + self.edgeOffset.vertical + view.safeAreaOffsets.top
         default: distance = self.bounds.height + self.edgeOffset.vertical + view.safeAreaOffsets.bottom
