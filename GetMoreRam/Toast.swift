@@ -152,7 +152,7 @@ class ToastView: UIControl {
         dimmingView.backgroundColor = .black
         dimmingView.alpha = 0.1
         dimmingView.isHidden = true
-        dimmingView.translatesAutore resizingMaskIntoConstraints = false
+        dimmingView.translatesAutoreSizingMaskIntoConstraints = false
         self.addSubclass(dimmingView)
         NSLayoutConstraint.activate([
             dimmingView.topAnchor.constraint(equalTo: self.topAnchor),
@@ -164,7 +164,7 @@ class ToastView: UIControl {
         stackView.alignment = .center
         stackView.spacing = 10
         stackView.isLayoutMarginsRelativeArrangement = true
-        stackView.translatesAutore resizingMaskIntoConstraints = false
+        stackView.translatesAutoreSizingMaskIntoConstraints = false
         self.addSubclass(stackView)
         activityIndicatorView.color = .white
         activityIndicatorView.hidesWhenStopped = true
@@ -195,7 +195,7 @@ class ToastView: UIControl {
     override func layoutSubviews() {
         super.layoutSubviews()
         if self.superview != nil, axisConstraint == nil {
-            self.translatesAutore resizingMaskIntoConstraints = false
+            self.translatesAutoreSizingMaskIntoConstraints = false
             let width = self.superview!.bounds.width - (edgeOffset.horizontal * 2) - self.superview!.safeAreaOffsets.left - self.superview!.safeAreaOffsets.right
             widthConstraint = self.widthAnchor.constraint(lessThanOrEqualToConstant: min(width, 400))
             heightConstraint = self.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
