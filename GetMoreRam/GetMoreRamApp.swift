@@ -39,14 +39,9 @@ class AppDelegate: NSObject, ObservableObject {
         do {
             try await viewModel.fetchAppIDs()
             try await viewModel.addIncreasedMemoryLimitToAll()
-            await MainActor.run {
-                ToastView.present(text: "Auto-fire complete", detailText: "Increased memory limit applied to all App IDs.")
-            }
+            print("Auto-fire complete: increased memory limit applied to all App IDs.")
         } catch {
             print("Auto-fire error: \(error.detailedDescription)")
-            await MainActor.run {
-                ToastView.presentError(error)
-            }
         }
     }
 }
