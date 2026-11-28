@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		4E9544D130558D4400540EF8 /* SideSign in Frameworks */ = {isa = PBXBuildFile; productRef = 4E9544D030558D4400540EF8 /* SideSign */; };
+		173496FC2D847E83007994DB /* OpenSSL in Frameworks */ = {isa = PBXBuildFile; productRef = 173496FB2D847E83007994DB /* OpenSSL */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,7 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4E9544D130558D4400540EF8 /* SideSign in Frameworks */,
+				173496FC2D847E83007994DB /* OpenSSL in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -51,7 +51,6 @@
 			isa = PBXGroup;
 			children = (
 				173496F22D847E82007994DB /* GetMoreRam */,
-				173497042D847F5A007994DB /* Frameworks */,
 				173496F12D847E82007994DB /* Products */,
 			);
 			sourceTree = "<group>";
@@ -62,13 +61,6 @@
 				173496F02D847E82007994DB /* GetMoreRam.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		173497042D847F5A007994DB /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -91,7 +83,8 @@
 			);
 			name = GetMoreRam;
 			packageProductDependencies = (
-				4E9544D030558D4400540EF8 /* SideSign */,
+				173496FB2D847E83007994DB /* OpenSSL */,
+				17A000000000000000000001 /* SideSign */,
 			);
 			productName = GetMoreRam;
 			productReference = 173496F02D847E82007994DB /* GetMoreRam.app */;
@@ -113,6 +106,7 @@
 				};
 			};
 			buildConfigurationList = 173496EB2D847E82007994DB /* Build configuration list for PBXProject "GetMoreRam" */;
+			compatibilityVersion = "Xcode 15.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -122,9 +116,9 @@
 			mainGroup = 173496E72D847E82007994DB;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				4E9544CF30558D4400540EF8 /* XCRemoteSwiftPackageReference "SideSign" */,
+				173496FA2D847E83007994DB /* XCRemoteSwiftPackageReference "OpenSSL" */,
+				17A000000000000000000002 /* XCRemoteSwiftPackageReference "SideSign" */,
 			);
-			preferredProjectObjectVersion = 77;
 			productRefGroup = 173496F12D847E82007994DB /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -207,7 +201,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -264,7 +258,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -282,17 +276,15 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"GetMoreRam/Preview Content\"";
-				DEVELOPMENT_TEAM = 3C3YHUUV75;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = GetMoreRam/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Get More Ram";
+				INFOPLIST_KEY_CFBundleDisplayName = "More Ram!";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -314,7 +306,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"GetMoreRam/Preview Content\"";
-				DEVELOPMENT_TEAM = 3C3YHUUV75;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = GetMoreRam/Info.plist;
@@ -324,13 +315,12 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.aigch.getMoreRam;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Mr3242.getMoreRam;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -362,20 +352,33 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		4E9544CF30558D4400540EF8 /* XCRemoteSwiftPackageReference "SideSign" */ = {
+		173496FA2D847E83007994DB /* XCRemoteSwiftPackageReference "OpenSSL" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/krzyzanowskim/OpenSSL";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.3.2000;
+			};
+		};
+		17A000000000000000000002 /* XCRemoteSwiftPackageReference "SideSign" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Mr3242-Scripter/SideSign";
 			requirement = {
-				branch = main;
 				kind = branch;
+				branch = main;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		4E9544D030558D4400540EF8 /* SideSign */ = {
+		173496FB2D847E83007994DB /* OpenSSL */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 4E9544CF30558D4400540EF8 /* XCRemoteSwiftPackageReference "SideSign" */;
+			package = 173496FA2D847E83007994DB /* XCRemoteSwiftPackageReference "OpenSSL" */;
+			productName = OpenSSL;
+		};
+		17A000000000000000000001 /* SideSign */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 17A000000000000000000002 /* XCRemoteSwiftPackageReference "SideSign" */;
 			productName = SideSign;
 		};
 /* End XCSwiftPackageProductDependency section */
