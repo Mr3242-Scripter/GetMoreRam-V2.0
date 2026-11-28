@@ -36,10 +36,8 @@ enum InstallEnvironment: String {
 }
 
 enum InstallEnvironmentDetector {
-    /// LiveContainer sets LC_HOME_PATH for guest processes.
     static var isLiveContainer: Bool {
         if getenv("LC_HOME_PATH") != nil { return true }
-        // Fallback: bundle / home path often contains LiveContainer
         let home = NSHomeDirectory()
         if home.contains("LiveContainer") { return true }
         if Bundle.main.bundlePath.contains("LiveContainer") { return true }
@@ -245,8 +243,6 @@ final class UpdateViewModel: ObservableObject {
         return false
     }
 
-    // MARK: - Perform update
-
     func performUpdate() async {
         guard let latest else {
             ToastView.present(text: "Check for updates first")
@@ -267,7 +263,6 @@ final class UpdateViewModel: ObservableObject {
         case .sideStore:
             await updateViaSideStore(release: latest)
         case .unknown:
-            // Prefer SideStore scheme if somehow available; else open IPA / release page
             if InstallEnvironmentDetector.canOpenSideStore {
                 await updateViaSideStore(release: latest)
             } else if InstallEnvironmentDetector.canOpenLiveContainer {
@@ -278,7 +273,6 @@ final class UpdateViewModel: ObservableObject {
         }
     }
 
-    /// Normal install: hand the remote IPA URL to SideStore (or AltStore).
     private func updateViaSideStore(release: GitHubRelease) async {
         guard let ipaURL = release.ipaDownloadURL else {
             statusMessage = "No .ipa asset on this release. Opening release page."
@@ -292,7 +286,7 @@ final class UpdateViewModel: ObservableObject {
         if let side = URL(string: "sidestore://install?url=\(encoded)"),
            UIApplication.shared.canOpenURL(URL(string: "sidestore://")!) {
             statusMessage = "Opening SideStore…"
-            UIApplication.shared.open(side)
+            await UIApplication.shared.open(side)
             ToastView.present(text: "Opening SideStore", detailText: "Confirm the install when SideStore appears.")
             return
         }
@@ -300,18 +294,16 @@ final class UpdateViewModel: ObservableObject {
         if let alt = URL(string: "altstore://install?url=\(encoded)"),
            UIApplication.shared.canOpenURL(URL(string: "altstore://")!) {
             statusMessage = "Opening AltStore…"
-            UIApplication.shared.open(alt)
+            await UIApplication.shared.open(alt)
             ToastView.present(text: "Opening AltStore", detailText: "Confirm the install when AltStore appears.")
             return
         }
 
-        // SideStore not installed / scheme blocked — open IPA URL as last resort
         statusMessage = "SideStore not available. Opening IPA link."
-        UIApplication.shared.open(ipaURL)
+        await UIApplication.shared.open(ipaURL)
         ToastView.present(text: "SideStore not found", detailText: "Opened the IPA download instead.")
     }
 
-    /// LiveContainer guest: download IPA into shared temp, then open LiveContainer install flow.
     private func updateViaLiveContainer(release: GitHubRelease) async {
         guard let ipaURL = release.ipaDownloadURL else {
             statusMessage = "No .ipa asset on this release. Opening release page."
@@ -327,16 +319,14 @@ final class UpdateViewModel: ObservableObject {
             let localIPA = try await downloadIPA(from: ipaURL)
             statusMessage = "Opening LiveContainer…"
 
-            // Prefer handing the remote URL to LiveContainer so it can install from network.
             let encodedRemote = ipaURL.absoluteString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ipaURL.absoluteString
             if let lcInstall = URL(string: "livecontainer://install?url=\(encodedRemote)"),
                UIApplication.shared.canOpenURL(URL(string: "livecontainer://")!) {
-                UIApplication.shared.open(lcInstall)
+                await UIApplication.shared.open(lcInstall)
                 ToastView.present(text: "Opening LiveContainer", detailText: "Confirm install / restart when prompted.")
                 return
             }
 
-            // Fallback: open the downloaded file (share sheet / document interaction)
             await openLocalFile(localIPA)
             ToastView.present(text: "IPA ready", detailText: "Choose LiveContainer to import the update.")
         } catch {
@@ -390,7 +380,6 @@ final class UpdateViewModel: ObservableObject {
     }
 
     private func openLocalFile(_ fileURL: URL) async {
-        // Use a simple open — on device the system may offer LiveContainer for .ipa
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
             let presenter = UIApplication.shared.connectedScenes
                 .compactMap { $0 as? UIWindowScene }
@@ -399,16 +388,15 @@ final class UpdateViewModel: ObservableObject {
                 .rootViewController
 
             guard let presenter else {
-                UIApplication.shared.open(fileURL)
+                Task { await UIApplication.shared.open(fileURL) }
                 cont.resume()
                 return
             }
 
             let doc = UIDocumentInteractionController(url: fileURL)
-            // Retain briefly
             objc_setAssociatedObject(doc, "retained", doc, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
             if !doc.presentOpenInMenu(from: CGRect(x: 0, y: 0, width: 1, height: 1), in: presenter.view, animated: true) {
-                UIApplication.shared.open(fileURL)
+                Task { await UIApplication.shared.open(fileURL) }
             }
             cont.resume()
         }
@@ -416,26 +404,25 @@ final class UpdateViewModel: ObservableObject {
 
     private func openDownloadFallback(release: GitHubRelease) {
         if let ipa = release.ipaDownloadURL {
-            UIApplication.shared.open(ipa)
+            Task { await UIApplication.shared.open(ipa) }
         } else if let page = URL(string: release.htmlURL) {
-            UIApplication.shared.open(page)
+            Task { await UIApplication.shared.open(page) }
         }
         ToastView.present(text: "Opening download")
     }
 
     func openReleasePage() {
         guard let latest, let url = URL(string: latest.htmlURL) else { return }
-        UIApplication.shared.open(url)
+        Task { await UIApplication.shared.open(url) }
     }
 
     func openRepo() {
         if let url = URL(string: "https://github.com/\(Self.owner)/\(Self.repo)") {
-            UIApplication.shared.open(url)
+            Task { await UIApplication.shared.open(url) }
         }
     }
 }
 
-// Associated object helper for document controller lifetime
 import ObjectiveC
 
 struct UpdateView: View {
