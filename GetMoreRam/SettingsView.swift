@@ -487,12 +487,11 @@ struct SettingsView: View {
         }
         do {
             let account = try SideStoreImporter.parse(data, filePassword: password)
-            Keychain.shared.appleIDEmailAddress = account.email
-            if let pass = account.password, !pass.isEmpty {
-                Keychain.shared.appleIDPassword = pass
-            }
-            Keychain.shared.adiPb = account.anisetteAdiBlob
-            Keychain.shared.identifier = account.anisetteIdentifier
+            SideStoreImporter.apply(account)
+            sharedModel.session = nil
+            sharedModel.account = nil
+            sharedModel.team = nil
+            sharedModel.isLogin = false
             AnisetteDataHelper.shared.resetClientInfo()
             email = account.email
             viewModel.appleID = account.email
@@ -542,7 +541,7 @@ struct SettingsView: View {
     func selectTeam(_ team: Team) {
         sharedModel.team = team
         sharedModel.isLogin = true
-        Keychain.shared.sessionTeamID = team.identifier
+        sharedModel.persistSelectedTeam(team)
         email = sharedModel.account?.appleID ?? email
         teamId = team.identifier
         viewModel.availableTeams = []

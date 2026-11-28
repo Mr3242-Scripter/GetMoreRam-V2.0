@@ -11,18 +11,23 @@
 import Foundation
 import CryptoKit
 import CommonCrypto
+import SideSign
 
 struct SideStoreImportedAccount {
     let email: String
     let password: String?
     let anisetteIdentifier: String
     let anisetteAdiBlob: String
+    let certificateData: Data?
+    let certificatePrivateKey: Data?
+    let certificatePassword: String?
 }
 
 enum SideStoreImportError: LocalizedError {
     case unreadableFile
     case wrongPassword
     case missingField(String)
+    case invalidCertificate
     
     var errorDescription: String? {
         switch self {
@@ -32,17 +37,43 @@ enum SideStoreImportError: LocalizedError {
             return "Wrong file password, or the file is corrupted."
         case .missingField(let field):
             return "The SideStore account file is missing \(field)."
+        case .invalidCertificate:
+            return "The signing certificate in this SideStore export could not be opened. Check the certificate password or export a new account file."
         }
     }
 }
 
-/// Shape of SideStore's `ImportedAccount` (v2.0). Extra keys such as the
-/// certificate are ignored: only the Apple ID and anisette identity are needed.
+/// SideStore ImportedAccount v2.0 and pre-v2 compatibility keys.
 private struct SideStoreAccountFile: Decodable {
     let email: String?
     let password: String?
     let anisetteIdentifier: String?
     let anisetteAdiBlob: String?
+    let certificateData: Data?
+    let certificatePassword: String?
+
+    enum CodingKeys: String, CodingKey {
+        case email, password, anisetteIdentifier, anisetteAdiBlob
+        case certificateData, certificatePassword
+        case legacyCertificate = "cert"
+        case legacyCertificatePassword = "certpass"
+        case legacyIdentifier = "local_user"
+        case legacyAdiBlob = "adiPB"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        email = try container.decodeIfPresent(String.self, forKey: .email)
+        password = try container.decodeIfPresent(String.self, forKey: .password)
+        anisetteIdentifier = try container.decodeIfPresent(String.self, forKey: .anisetteIdentifier)
+            ?? container.decodeIfPresent(String.self, forKey: .legacyIdentifier)
+        anisetteAdiBlob = try container.decodeIfPresent(String.self, forKey: .anisetteAdiBlob)
+            ?? container.decodeIfPresent(String.self, forKey: .legacyAdiBlob)
+        certificateData = try container.decodeIfPresent(Data.self, forKey: .certificateData)
+            ?? container.decodeIfPresent(Data.self, forKey: .legacyCertificate)
+        certificatePassword = try container.decodeIfPresent(String.self, forKey: .certificatePassword)
+            ?? container.decodeIfPresent(String.self, forKey: .legacyCertificatePassword)
+    }
 }
 
 enum SideStoreImporter {
@@ -65,15 +96,10 @@ enum SideStoreImporter {
             json = try decrypt(data, password: filePassword)
         }
         
-        // Legacy plain format (email/password/adiPB/local_user) first
-        if let legacy = try? SideStoreAccountImporterLegacy.decode(json) {
-            return legacy
-        }
-        
         guard let file = try? JSONDecoder().decode(SideStoreAccountFile.self, from: json) else {
             throw SideStoreImportError.unreadableFile
         }
-        
+
         let email = (file.email ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !email.isEmpty else { throw SideStoreImportError.missingField("email") }
         guard let identifier = file.anisetteIdentifier, !identifier.isEmpty else {
@@ -82,23 +108,50 @@ enum SideStoreImporter {
         guard let adiPb = file.anisetteAdiBlob, !adiPb.isEmpty else {
             throw SideStoreImportError.missingField("anisetteAdiBlob")
         }
-        
+
         let password = file.password?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let certificatePassword = file.certificatePassword?.isEmpty == true ? nil : file.certificatePassword
+        var certificate: Data?
+        var privateKey: Data?
+
+        if let certificateData = file.certificateData {
+            do {
+                let components = try PKCS12Parser.extract(
+                    certificateData,
+                    password: certificatePassword
+                )
+                guard !components.cert.isEmpty, !components.key.isEmpty else {
+                    throw SideStoreImportError.invalidCertificate
+                }
+                certificate = components.cert
+                privateKey = components.key
+            } catch {
+                throw SideStoreImportError.invalidCertificate
+            }
+        }
+
         return SideStoreImportedAccount(
             email: email,
             password: (password?.isEmpty ?? true) ? nil : password,
             anisetteIdentifier: identifier,
-            anisetteAdiBlob: adiPb
+            anisetteAdiBlob: adiPb,
+            certificateData: certificate,
+            certificatePrivateKey: privateKey,
+            certificatePassword: certificatePassword
         )
     }
-    
+
     /// Saves the imported account where the rest of the app reads it.
     static func apply(_ account: SideStoreImportedAccount) {
         Keychain.shared.appleIDEmailAddress = account.email
         Keychain.shared.appleIDPassword = account.password
         Keychain.shared.identifier = account.anisetteIdentifier
         Keychain.shared.adiPb = account.anisetteAdiBlob
-        // A different account means the saved developer session no longer applies
+        Keychain.shared.signingCertificate = account.certificateData
+        Keychain.shared.signingCertificatePrivateKey = account.certificatePrivateKey
+        Keychain.shared.signingCertificatePassword = account.certificatePassword
+        Keychain.shared.signingCertificateSerialNumber = nil
+        // A different account means the saved developer session no longer applies.
         Keychain.shared.clearSession()
     }
     
@@ -151,26 +204,3 @@ enum SideStoreImporter {
     }
 }
 
-/// The old plain-JSON layout this app used to expect.
-private enum SideStoreAccountImporterLegacy {
-    static func decode(_ json: Data) throws -> SideStoreImportedAccount {
-        let account = try JSONDecoder().decode(SideStoreAccount.self, from: json)
-        
-        let email = account.email.trimmingCharacters(in: .whitespacesAndNewlines)
-        let adiPB = account.adiPB.trimmingCharacters(in: .whitespacesAndNewlines)
-        let localUser = account.localUser.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        guard !email.isEmpty, !adiPB.isEmpty,
-              let decoded = Data(base64Encoded: localUser), decoded.count == 16 else {
-            throw SideStoreImportError.unreadableFile
-        }
-        
-        let password = account.password.trimmingCharacters(in: .whitespacesAndNewlines)
-        return SideStoreImportedAccount(
-            email: email,
-            password: password.isEmpty ? nil : password,
-            anisetteIdentifier: localUser,
-            anisetteAdiBlob: adiPB
-        )
-    }
-}

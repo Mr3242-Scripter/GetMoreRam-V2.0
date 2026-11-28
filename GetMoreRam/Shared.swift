@@ -115,15 +115,120 @@ class SharedModel: ObservableObject {
     }
 
     func persistSession(_ session: Session, account: Account) {
-        Keychain.shared.sessionDSID = session.dsid
-        Keychain.shared.sessionAuthTokens = session.authToken.data(using: .utf8)
-        if let encoded = try? JSONEncoder().encode(account) {
-            Keychain.shared.sessionAccount = encoded
-        }
+        let keychain = Keychain.shared
+        keychain.sessionDSID = session.dsid
+        keychain.sessionAuthTokens = session.authToken.data(using: .utf8)
+        keychain.sessionData = try? JSONEncoder().encode(session)
+        keychain.sessionAccount = try? JSONEncoder().encode(account)
+    }
+
+    func persistSelectedTeam(_ team: Team) {
+        Keychain.shared.sessionTeamID = team.identifier
+        Keychain.shared.sessionTeam = try? JSONEncoder().encode(team)
     }
 
     private func restoreSession() async {
-        await MainActor.run { self.sessionRestoreFailed = true }
+        let keychain = Keychain.shared
+
+        do {
+            let restoredSession: Session
+            if let data = keychain.sessionData,
+               let decoded = try? JSONDecoder().decode(Session.self, from: data) {
+                restoredSession = decoded
+            } else {
+                // Migrate sessions saved by older MoreRam builds.
+                guard let dsid = keychain.sessionDSID,
+                      let tokenData = keychain.sessionAuthTokens,
+                      let token = String(data: tokenData, encoding: .utf8),
+                      !token.isEmpty else {
+                    throw SessionRestoreError.missingSession
+                }
+
+                let anisetteData = try await DataManager.fetchAnisetteData()
+                restoredSession = Session(
+                    dsid: dsid,
+                    authToken: token,
+                    anisetteData: anisetteData,
+                    xcodeVersion: "26.0"
+                )
+            }
+
+            let activeSession: Session
+            let restoredAccount: Account
+
+            if restoredSession.isValid,
+               let account = try? await DeveloperPortal.shared.fetchAccount(session: restoredSession) {
+                activeSession = restoredSession
+                restoredAccount = account
+            } else {
+                // Refresh an expired or rejected session with the saved Apple ID credentials.
+                guard let email = keychain.appleIDEmailAddress,
+                      let password = keychain.appleIDPassword,
+                      !password.isEmpty else {
+                    throw SessionRestoreError.expiredSession
+                }
+
+                let anisetteData = try await DataManager.fetchAnisetteData()
+                let authentication = try await DeveloperPortal.shared.authenticate(
+                    appleID: email,
+                    password: password,
+                    anisetteData: anisetteData,
+                    xcodeVersion: "26.0"
+                )
+                activeSession = authentication.session
+                restoredAccount = authentication.account
+            }
+
+            let restoredTeams = try await DeveloperPortal.shared.fetchTeams(
+                for: restoredAccount,
+                session: activeSession
+            )
+
+            let savedTeam: Team? = keychain.sessionTeam.flatMap {
+                try? JSONDecoder().decode(Team.self, from: $0)
+            }
+            let selectedTeam = restoredTeams.first {
+                $0.identifier == (keychain.sessionTeamID ?? savedTeam?.identifier)
+            } ?? (restoredTeams.count == 1 ? restoredTeams.first : nil)
+
+            guard let selectedTeam else {
+                throw SessionRestoreError.missingSelectedTeam
+            }
+
+            await MainActor.run {
+                self.session = activeSession
+                self.account = restoredAccount
+                self.team = selectedTeam
+                self.isLogin = true
+                self.sessionRestoreFailed = false
+            }
+
+            persistSession(activeSession, account: restoredAccount)
+            persistSelectedTeam(selectedTeam)
+        } catch {
+            await MainActor.run {
+                self.session = nil
+                self.account = nil
+                self.team = nil
+                self.isLogin = false
+                self.sessionRestoreFailed = true
+            }
+            print("Account session restoration failed: \\(error.detailedDescription)")
+        }
+    }
+
+    private enum SessionRestoreError: LocalizedError {
+        case missingSession
+        case expiredSession
+        case missingSelectedTeam
+
+        var errorDescription: String? {
+            switch self {
+            case .missingSession: return "No saved Apple Developer session was found."
+            case .expiredSession: return "The saved Apple Developer session has expired. Sign in again."
+            case .missingSelectedTeam: return "The saved developer team is no longer available. Sign in and select a team again."
+            }
+        }
     }
 
     func loadCustomAppSettings() {

@@ -93,6 +93,13 @@ public class Keychain
     
     @KeychainItem(key: "sessionTeamID")
     public var sessionTeamID: String?
+
+    // Full Codable session and selected team, including Anisette data, for restart recovery.
+    @KeychainItem(key: "sessionData")
+    public var sessionData: Data?
+
+    @KeychainItem(key: "sessionTeam")
+    public var sessionTeam: Data?
     
     private init()
     {
@@ -104,6 +111,8 @@ public class Keychain
         self.sessionAuthTokens = nil
         self.sessionAccount = nil
         self.sessionTeamID = nil
+        self.sessionData = nil
+        self.sessionTeam = nil
     }
     
     public func reset()
@@ -112,6 +121,8 @@ public class Keychain
         self.appleIDPassword = nil
         self.signingCertificatePrivateKey = nil
         self.signingCertificateSerialNumber = nil
+        self.signingCertificate = nil
+        self.signingCertificatePassword = nil
     }
 }
 
