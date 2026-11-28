@@ -2,31 +2,10 @@
 //  AnisetteServersManager.swift
 //  GetMoreRam (moved from SideStore/Core/Anisette)
 //
+//  Server / AnisetteServerData / ODAValue are defined in AnisetteServerList.swift.
+//
 
 import Foundation
-
-struct ODAValue: Codable, Hashable {}
-
-struct Server: Codable, Identifiable, Hashable {
-    var id: String { address }
-    var name: String
-    var address: String
-}
-
-struct AnisetteServerData: Codable {
-    let servers: [Server]
-    let oda: ODAValue?
-    enum CodingKeys: String, CodingKey { case servers, oda }
-    init(servers: [Server], oda: ODAValue? = nil) {
-        self.servers = servers
-        self.oda = oda
-    }
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        servers = (try? c.decode([Server].self, forKey: .servers)) ?? []
-        oda = try? c.decodeIfPresent(ODAValue.self, forKey: .oda)
-    }
-}
 
 public struct AnisetteServerItem: Codable, Identifiable, Hashable {
     public var id: String { address }
@@ -111,15 +90,17 @@ public actor AnisetteServersManager {
             try? data.write(to: userFacingFileURL, options: .atomic)
             try? data.write(to: privateBackupFileURL, options: .atomic)
         }
-        let active = items.filter { !$0.isHidden }.map(\.address)
+        let active = items.filter { !isHidden($0) }.map(\.address)
         let current = UserDefaults.standard.menuAnisetteURL
         if !active.contains(current), let first = active.first {
             UserDefaults.standard.menuAnisetteURL = first
         }
     }
 
+    private func isHidden(_ item: AnisetteServerItem) -> Bool { item.isHidden }
+
     public func getActiveServerURLs() -> [String] {
-        loadLocalServers().filter { !$0.isHidden }.map(\.address)
+        loadLocalServers().filter { !isHidden($0) }.map(\.address)
     }
 
     public func importFromData(data: Data, filename: String) throws -> [AnisetteServerItem] {
@@ -141,7 +122,7 @@ public actor AnisetteServersManager {
     }
 
     public func exportCatalogData(unmodified: Bool = false) -> Data? {
-        let items = loadLocalServers().filter { !$0.isHidden }
+        let items = loadLocalServers().filter { !isHidden($0) }
         let catalog = AnisetteServerData(servers: items.map { Server(name: $0.name, address: $0.address) })
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
