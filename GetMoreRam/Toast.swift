@@ -9,25 +9,16 @@
 @preconcurrency import UIKit
 
 // MARK: - SideStore ToastView API compatibility (public UIKit mapping)
-// SideStore uses UISpringTimingParameters(stiffness:dampingRatio:) and
-// UIViewPropertyAnimator(springTimingParameters:animations:). Those exact
-// initializers are not public; these map them to the supported APIs so the
-// toast still uses the same spring motion.
-
 extension UISpringTimingParameters {
-    /// Matches SideStore/AltStore ToastView spring (stiffness 750, dampingRatio 1).
     convenience init(stiffness: CGFloat, dampingRatio: CGFloat) {
         let mass: CGFloat = 1.0
-        // ζ = c / (2√(k·m))  →  c = 2·ζ·√(k·m)
         let damping = 2.0 * dampingRatio * sqrt(stiffness * mass)
         self.init(mass: mass, stiffness: stiffness, damping: damping, initialVelocity: .zero)
     }
 }
 
 extension UIViewPropertyAnimator {
-    /// Matches SideStore ToastView animator construction.
     convenience init(springTimingParameters: UITimingCurveProvider, animations: (() -> Void)?) {
-        // Duration is used as a baseline; spring parameters drive the actual motion.
         self.init(duration: 0.5, timingParameters: springTimingParameters)
         if let animations {
             addAnimations(animations)
@@ -98,34 +89,29 @@ class ToastView: UIControl
 
     init(text: String, detailText detailedText: String?)
     {
-        if detailedText == nil
-        {
+        if detailedText == nil {
             self.preferredDuration = .shortToastViewDuration
-        }
-        else
-        {
+        } else {
             self.preferredDuration = .longToastViewDuration
         }
 
         super.init(frame: .zero)
-
         self.initialize()
 
         self.textLabel.text = text
         self.detailTextLabel.text = detailedText
 
-        self.backgroundColor = UIColor.systemBlue
+        // SideStore uses .altPrimary; approximate brand blue
+        self.backgroundColor = UIColor(red: 0.20, green: 0.45, blue: 0.95, alpha: 1.0)
         self.textLabel.textColor = .white
         self.detailTextLabel.textColor = .white
 
         self.isAccessibilityElement = true
-
         self.layoutMargins = UIEdgeInsets(top: 8, left: 16, bottom: 10, right: 16)
         self.setNeedsLayout()
 
         self.labelsStackView.spacing = (detailedText != nil) ? 4.0 : 0.0
         self.labelsStackView.alignment = .leading
-
         self.addTarget(self, action: #selector(ToastView.showErrorLog), for: .touchUpInside)
     }
 
@@ -260,13 +246,11 @@ class ToastView: UIControl
         }
     }
 
-    func show(in viewController: UIViewController)
-    {
+    func show(in viewController: UIViewController) {
         self.show(in: viewController.view)
     }
 
-    func show(in view: UIView)
-    {
+    func show(in view: UIView) {
         self.show(in: view, duration: self.preferredDuration)
     }
 
@@ -282,9 +266,7 @@ class ToastView: UIControl
             dismissTimer = nil
         }
 
-        if isShown {
-            return
-        }
+        if isShown { return }
 
         isShown = true
 
@@ -319,9 +301,7 @@ class ToastView: UIControl
     }
 
     @objc func dismiss() {
-        if !isShown {
-            return
-        }
+        if !isShown { return }
 
         isShown = false
         dismissTimer?.invalidate()
@@ -376,10 +356,8 @@ class ToastView: UIControl
     }
 }
 
-private extension ToastView
-{
-    @objc func showErrorLog()
-    {
+private extension ToastView {
+    @objc func showErrorLog() {
         guard self.opensErrorLog else { return }
         NotificationCenter.default.post(name: ToastView.openErrorLogNotification, object: self)
     }
